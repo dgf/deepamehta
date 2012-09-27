@@ -192,6 +192,7 @@
             <modules>
                 <module>modules/dm4-parent</module>
                 <module>modules/dm4-api</module>
+                <module>modules/dm4-core</module>
             </modules>
         </profile>
 

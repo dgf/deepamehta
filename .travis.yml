@@ -1,5 +1,7 @@
 language: java
-jdk: oraclejdk7
+jdk:
+  - oraclejdk7
+  - openjdk7
 
 install: mvn clean install -P all,dist -DskipTests=true --quiet
 before_script: mkdir ./deepamehta-files

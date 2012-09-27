@@ -114,6 +114,12 @@
 
         <profile>
             <id>all</id>
+            <activation>
+                <property>
+                    <name>env</name>
+                    <value>travis</value>
+                </property>
+            </activation>
             <modules>
                 <module>modules/dm4-parent</module>
                 <module>modules/dm4-api</module>
@@ -189,11 +195,6 @@
             <properties>
                 <dm4.filerepo.path>${project.basedir}/deepamehta-files</dm4.filerepo.path>
             </properties>
-            <modules>
-                <module>modules/dm4-parent</module>
-                <module>modules/dm4-api</module>
-                <module>modules/dm4-core</module>
-            </modules>
         </profile>
 
         <profile>

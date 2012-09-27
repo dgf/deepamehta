@@ -1,6 +1,10 @@
 language: java
 jdk: oraclejdk7
+
 #install: mvn clean install -P all,dist -DskipTests=true
 #before_script: mkdir ./deepamehta-files
 #script: mvn test -Denv=travis
 
+branches:
+  only:
+    - master

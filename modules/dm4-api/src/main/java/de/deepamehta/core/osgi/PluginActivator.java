@@ -91,21 +91,6 @@ public class PluginActivator implements BundleActivator, PluginContext {
 
     // ----------------------------------------------------------------------------------------------- Protected Methods
 
-    protected void setCoreService(DeepaMehtaService dms) {
-        this.dms = dms;
-        //
-        try {
-            plugin = dms.createPlugin(this);
-            plugin.start();
-        } catch (Exception e) {
-            logger.severe("Starting " + this + " failed:");
-            e.printStackTrace();
-            // Note: we don't throw through the OSGi container here.
-            // It would not print out the stacktrace.
-            // File Install would retry to start the bundle endlessly.
-        }
-    }
-
     /**
      * @param   securityHandler     Optional. If null no security is provided.
      */
@@ -129,6 +114,21 @@ public class PluginActivator implements BundleActivator, PluginContext {
     }
 
     // ------------------------------------------------------------------------------------------------- Private Methods
+
+    private void setCoreService(DeepaMehtaService dms) {
+        this.dms = dms;
+        //
+        try {
+            plugin = dms.createPlugin(this);
+            plugin.start();
+        } catch (Exception e) {
+            logger.severe("Starting " + this + " failed:");
+            e.printStackTrace();
+            // Note: we don't throw through the OSGi container here.
+            // It would not print out the stacktrace.
+            // File Install would retry to start the bundle endlessly.
+        }
+    }
 
     private void stop() {
         try {

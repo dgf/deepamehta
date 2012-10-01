@@ -45,7 +45,7 @@ public class PluginImpl implements Plugin, EventHandler {
 
     private static final String PLUGIN_DEFAULT_PACKAGE = "de.deepamehta.core.osgi";
     private static final String PLUGIN_CONFIG_FILE = "/plugin.properties";
-    private static final String PLUGIN_ACTIVATED = "de/deepamehta/core/plugin_activated";   // topic of the OSGi event
+    private static final String PLUGIN_ACTIVATED = "de/deepamehta/core/plugin_activated";     // topic of the OSGi event
 
     // ---------------------------------------------------------------------------------------------- Instance Variables
 
@@ -78,8 +78,8 @@ public class PluginImpl implements Plugin, EventHandler {
 
     private List<ServiceTracker> coreServiceTrackers = new ArrayList<ServiceTracker>();
     private List<ServiceTracker> pluginServiceTrackers = new ArrayList<ServiceTracker>();
-    private List<PluginService> plugins = new ArrayList<PluginService>();
-    private String[] serviceInterfaces = null; // needed to track count of arrived plugin services
+    private List<PluginService> availableServices = new ArrayList<PluginService>();
+    private String[] consumedServices = null; // needed to track count of arrived plugin services
 
     private Logger logger = Logger.getLogger(getClass().getName());
 
@@ -92,21 +92,19 @@ public class PluginImpl implements Plugin, EventHandler {
         this.dms = dms;
         this.pluginContext = pluginContext;
         this.bundleContext = pluginContext.getBundleContext();
-        //
+
         this.pluginBundle = bundleContext.getBundle();
         this.pluginUri = pluginBundle.getSymbolicName();
         this.pluginName = (String) pluginBundle.getHeaders().get("Bundle-Name");
-        String pluginClass = (String) pluginBundle.getHeaders().get("Bundle-Activator");
-        logger.info("Instantiate " + pluginClass);
 
         this.pluginProperties = readConfigFile();
         this.pluginPackage = getConfigProperty("pluginPackage", pluginContext.getClass().getPackage().getName());
         this.pluginInfo = new PluginInfoImpl(pluginUri, pluginBundle);
         this.pluginDependencies = pluginDependencies();
 
-        String consumedServiceInterfaces = getConfigProperty("consumedServiceInterfaces");
-        if (consumedServiceInterfaces != null) {
-            serviceInterfaces = consumedServiceInterfaces.split(", *");
+        String interfaces = getConfigProperty("consumedServiceInterfaces");
+        if (interfaces != null) {
+            consumedServices = interfaces.split(", *");
         }
     }
 
@@ -124,7 +122,6 @@ public class PluginImpl implements Plugin, EventHandler {
         if (pluginDependencies.size() > 0) {
             registerEventListener();
         }
-        registerPluginService();
     }
 
     @Override
@@ -281,9 +278,9 @@ public class PluginImpl implements Plugin, EventHandler {
     }
 
     private void createPluginServiceTrackers() {
-        if (serviceInterfaces != null) {
-            for (int i = 0; i < serviceInterfaces.length; i++) {
-                pluginServiceTrackers.add(createServiceTracker(serviceInterfaces[i]));
+        if (consumedServices != null) {
+            for (int i = 0; i < consumedServices.length; i++) {
+                pluginServiceTrackers.add(createServiceTracker(consumedServices[i]));
             }
         }
     }
@@ -380,7 +377,7 @@ public class PluginImpl implements Plugin, EventHandler {
             logger.info("Adding \"" + serviceInterface + "\" to " + this);
             PluginService pluginService = (PluginService) service;
             deliverEvent(CoreEvent.PLUGIN_SERVICE_ARRIVED, pluginService);
-            plugins.add(pluginService);
+            availableServices.add(pluginService);
             checkRequirementsForActivation();
         }
     }
@@ -399,7 +396,7 @@ public class PluginImpl implements Plugin, EventHandler {
             logger.info("Removing plugin service \"" + serviceInterface + "\" from " + this);
             PluginService pluginService = (PluginService) service;
             deliverEvent(CoreEvent.PLUGIN_SERVICE_GONE, pluginService);
-            plugins.remove(pluginService);
+            availableServices.remove(pluginService);
         }
     }
 
@@ -424,6 +421,7 @@ public class PluginImpl implements Plugin, EventHandler {
         }
         //
         if (dms.pluginManager.activatePlugin(this)) {
+            registerPluginService();
             postPluginActivatedEvent();
             if (dms.pluginManager.checkAllPluginsActivated()) {
                 logger.info("########## All Plugins Activated ##########");
@@ -783,10 +781,10 @@ public class PluginImpl implements Plugin, EventHandler {
                 return false;
             }
         }
-        if(serviceInterfaces != null && plugins.size() != serviceInterfaces.length) {
-            return false;
-        } else {
+        if (consumedServices == null || availableServices.size() == consumedServices.length) {
             return true;
+        } else {
+            return false;
         }
     }
 

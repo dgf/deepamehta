@@ -166,10 +166,8 @@ class PluginManager {
         Object activator = bundle.getHeaders().get("Bundle-Activator");
         if (activator != null && ((String) activator).equals(Core.class.getName())) {
             return false; // ignore core bundle
-        } else if (packages.contains("de.deepamehta.core.service")) {
-            return true; // plugin service
         } else if (packages.contains("de.deepamehta.core.osgi")) {
-            return true; // plugin without service implementation
+            return true; // deepamehta plugin bundle
         } else {
             return false; // 3rd party bundles
         }

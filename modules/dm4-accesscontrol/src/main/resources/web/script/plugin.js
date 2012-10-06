@@ -3,35 +3,35 @@ dm4c.add_plugin("de.deepamehta.accesscontrol", function() {
     var ENCRYPTED_PASSWORD_PREFIX = "-SHA256-"
     var self = this
 
-    dm4c.load_script("/de.deepamehta.accesscontrol/script/vendor/sha256.js")
+    dm4c.load_script("de.deepamehta.accesscontrol/script/vendor/sha256.js")
 
 
 
     // === REST Client Extension ===
 
     dm4c.restc.login = function(authorization) {
-        return this.request("POST", "/accesscontrol/login", undefined, {"Authorization": authorization})
+        return this.request("POST", "accesscontrol/login", undefined, {"Authorization": authorization})
     }
     dm4c.restc.logout = function() {
-        return this.request("POST", "/accesscontrol/logout")
+        return this.request("POST", "accesscontrol/logout")
     }
     dm4c.restc.get_username = function() {
-        return this.request("GET", "/accesscontrol/user")   // Note: 204 No Content yields to null result
+        return this.request("GET", "accesscontrol/user")   // Note: 204 No Content yields to null result
     }
     dm4c.restc.get_topic_permissions = function(topic_id) {
-        return this.request("GET", "/accesscontrol/topic/" + topic_id)
+        return this.request("GET", "accesscontrol/topic/" + topic_id)
     }
     dm4c.restc.get_owned_topic = function(user_id, type_uri) {
-        return this.request("GET", "/accesscontrol/owner/" + user_id + "/" + type_uri)
+        return this.request("GET", "accesscontrol/owner/" + user_id + "/" + type_uri)
     }
     dm4c.restc.set_owner = function(topic_id, user_id) {
-        this.request("POST", "/accesscontrol/topic/" + topic_id + "/owner/" + user_id)
+        this.request("POST", "accesscontrol/topic/" + topic_id + "/owner/" + user_id)
     }
     dm4c.restc.create_acl_entry = function(topic_id, user_role_uri, permissions) {
-        this.request("POST", "/accesscontrol/topic/" + topic_id + "/userrole/" + user_role_uri, permissions)
+        this.request("POST", "accesscontrol/topic/" + topic_id + "/userrole/" + user_role_uri, permissions)
     }
     dm4c.restc.join_workspace = function(workspace_id, user_id) {
-        this.request("POST", "/accesscontrol/user/" + user_id + "/" + workspace_id)
+        this.request("POST", "accesscontrol/user/" + user_id + "/" + workspace_id)
     }
 
 

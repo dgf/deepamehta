@@ -3,8 +3,8 @@ dm4c.add_plugin("de.deepamehta.topicmaps", function() {
     var LOG_TOPICMAPS = false
     var self = this
 
-    dm4c.load_script("/de.deepamehta.topicmaps/script/topicmap_renderer_extension.js")
-    dm4c.load_script("/de.deepamehta.topicmaps/script/model/topicmap.js")
+    dm4c.load_script("de.deepamehta.topicmaps/script/topicmap_renderer_extension.js")
+    dm4c.load_script("de.deepamehta.topicmaps/script/model/topicmap.js")
 
     js.extend(dm4c.canvas, TopicmapRendererExtension)
 
@@ -23,28 +23,28 @@ dm4c.add_plugin("de.deepamehta.topicmaps", function() {
     // === REST Client Extension ===
 
     dm4c.restc.get_topicmap = function(topicmap_id) {
-        return this.request("GET", "/topicmap/" + topicmap_id)
+        return this.request("GET", "topicmap/" + topicmap_id)
     }
     dm4c.restc.create_topicmap = function(name, topicmap_renderer_uri) {
-        return this.request("POST", "/topicmap/" + encodeURIComponent(name) + "/" + topicmap_renderer_uri)
+        return this.request("POST", "topicmap/" + encodeURIComponent(name) + "/" + topicmap_renderer_uri)
     }
     dm4c.restc.add_topic_to_topicmap = function(topicmap_id, topic_id, x, y) {
-        this.request("POST", "/topicmap/" + topicmap_id + "/topic/" + topic_id + "/" + x + "/" + y)
+        this.request("POST", "topicmap/" + topicmap_id + "/topic/" + topic_id + "/" + x + "/" + y)
     }
     dm4c.restc.add_association_to_topicmap = function(topicmap_id, assoc_id) {
-        this.request("POST", "/topicmap/" + topicmap_id + "/association/" + assoc_id)
+        this.request("POST", "topicmap/" + topicmap_id + "/association/" + assoc_id)
     }
     dm4c.restc.move_topic = function(topicmap_id, topic_id, x, y) {
-        this.request("PUT", "/topicmap/" + topicmap_id + "/topic/" + topic_id + "/" + x + "/" + y)
+        this.request("PUT", "topicmap/" + topicmap_id + "/topic/" + topic_id + "/" + x + "/" + y)
     }
     dm4c.restc.set_topic_visibility = function(topicmap_id, topic_id, visibility) {
-        this.request("PUT", "/topicmap/" + topicmap_id + "/topic/" + topic_id + "/" + visibility)
+        this.request("PUT", "topicmap/" + topicmap_id + "/topic/" + topic_id + "/" + visibility)
     }
     dm4c.restc.remove_association_from_topicmap = function(topicmap_id, assoc_id) {
-        this.request("DELETE", "/topicmap/" + topicmap_id + "/association/" + assoc_id)
+        this.request("DELETE", "topicmap/" + topicmap_id + "/association/" + assoc_id)
     }
     dm4c.restc.set_topicmap_translation = function(topicmap_id, trans_x, trans_y) {
-        this.request("PUT", "/topicmap/" + topicmap_id + "/translation/" + trans_x + "/" + trans_y)
+        this.request("PUT", "topicmap/" + topicmap_id + "/translation/" + trans_x + "/" + trans_y)
     }
 
 
@@ -280,7 +280,7 @@ dm4c.add_plugin("de.deepamehta.topicmaps", function() {
 
     dm4c.add_listener("pre_push_history", function(history_entry) {
         history_entry.state.topicmap_id = topicmap.get_id()
-        history_entry.url = "/topicmap/" + topicmap.get_id() + history_entry.url
+        history_entry.url = "topicmap/" + topicmap.get_id() + history_entry.url
     })
 
     dm4c.add_listener("pre_pop_history", function(state) {

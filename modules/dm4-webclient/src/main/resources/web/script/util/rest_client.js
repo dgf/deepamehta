@@ -265,6 +265,7 @@ function RESTClient(core_service_uri) {
             contentType: content_type,
             headers: headers,
             data: data,
+            dataType: "json",
             processData: false,
             async: async,
             success: function(data, text_status, jq_xhr) {

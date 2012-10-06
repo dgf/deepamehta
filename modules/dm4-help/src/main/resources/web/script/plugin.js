@@ -4,7 +4,7 @@ dm4c.add_plugin("de.deepamehta.help", function() {
         '<table>' +
             '<tr>' +
                 '<td>' +
-                    '<img src="/de.deepamehta.webclient/images/deepamehta-logo.png">' +
+                    '<img src="de.deepamehta.webclient/images/deepamehta-logo.png">' +
                 '</td>' +
                 '<td>' +
                     '<div class="field-label">Version</div>' +

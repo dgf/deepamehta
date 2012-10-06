@@ -217,7 +217,7 @@ function PluginManager(config) {
 
     function load_internal_plugins(plugins) {
         for (var i = 0, plugin; plugin = plugins[i]; i++) {
-            load_plugin_file("/de.deepamehta.webclient/script/internal_plugins/" + plugin)
+            load_plugin_file("de.deepamehta.webclient/script/internal_plugins/" + plugin)
         }
     }
 
@@ -226,7 +226,7 @@ function PluginManager(config) {
         if (plugin.has_plugin_file) {
             if (dm4c.LOG_PLUGIN_LOADING) dm4c.log("..... plugin \"" + plugin.plugin_uri +
                 "\" -- has plugin file")
-            var plugin_file = "/" + plugin.plugin_uri + "/script/plugin.js"
+            var plugin_file = plugin.plugin_uri + "/script/plugin.js"
             if (dm4c.LOG_PLUGIN_LOADING) dm4c.log("..... " + plugin_file)
             load_plugin_file(plugin_file)
         } else {
@@ -247,7 +247,7 @@ function PluginManager(config) {
     function load_renderers(plugin_uri, renderer_type, renderer_files) {
         for (var i = 0, renderer_file; renderer_file = renderer_files[i]; i++) {
             if (dm4c.LOG_PLUGIN_LOADING) dm4c.log("..... Loading " + renderer_type + " " + renderer_file)
-            renderer_file = "/" + plugin_uri + "/script/renderers/" + renderer_type + "/" + renderer_file
+            renderer_file = plugin_uri + "/script/renderers/" + renderer_type + "/" + renderer_file
             dm4c.load_script(renderer_file, true)   // async=true
         }
     }
@@ -260,7 +260,7 @@ function PluginManager(config) {
 
     function load_stylesheets(plugin_uri, stylesheets) {
         for (var i = 0, stylesheet; stylesheet = stylesheets[i]; i++) {
-            load_stylesheet("/" + plugin_uri + "/style/" + stylesheet)
+            load_stylesheet(plugin_uri + "/style/" + stylesheet)
         }
     }
 

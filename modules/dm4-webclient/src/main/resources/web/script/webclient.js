@@ -14,10 +14,10 @@ function Webclient() {
     // preferences
     this.MAX_RESULT_SIZE = 100
     this.MAX_LINK_TEXT_LENGTH = 50
-    this.DEFAULT_TOPIC_ICON = "/de.deepamehta.webclient/images/ball-gray.png"
+    this.DEFAULT_TOPIC_ICON = "de.deepamehta.webclient/images/ball-gray.png"
     var DEFAULT_FIELD_ROWS = 1
 
-    var CORE_SERVICE_URI = "/core"
+    this.BASE_HREF = ""
     this.COMPOSITE_PATH_SEPARATOR = "/"
     this.REF_PREFIX = "ref_id:"
     this.DEL_PREFIX = "del_id:"
@@ -28,7 +28,7 @@ function Webclient() {
     }
 
     // utilities
-    this.restc = new RESTClient(CORE_SERVICE_URI)
+    this.restc = null               // RESTClient, initialized with BASE_HREF in jQuery ready callback
     this.ui = new GUIToolkit({pre_open_menu: pre_open_menu})
     this.render = new RenderHelper()
 
@@ -47,7 +47,7 @@ function Webclient() {
         internal_plugins: ["default_plugin.js", "fulltext_plugin.js", "ckeditor_plugin.js"]
     })
 
-    extend_rest_client()
+
 
     // ------------------------------------------------------------------------------------------------------ Public API
 
@@ -694,7 +694,7 @@ function Webclient() {
      */
     this.load_script = function(url, async) {
         $.ajax({
-            url: url,
+            url: this.BASE_HREF + url,
             dataType: "script",
             async: async || false,
             error: function(jq_xhr, text_status, error_thrown) {
@@ -1295,7 +1295,13 @@ function Webclient() {
     // ------------------------------------------------------------------------------------------------ Constructor Code
 
     $(function() {
-        // 1) Build GUI
+        //
+        // 1) Create REST client
+        dm4c.BASE_HREF = $("base").attr("href")
+        dm4c.restc = new RESTClient(dm4c.BASE_HREF + "core")
+        extend_rest_client()
+        //
+        // 2) Build GUI
         dm4c.toolbar = new ToolbarPanel()
         $("body").append(dm4c.toolbar.dom)
         //
@@ -1308,14 +1314,14 @@ function Webclient() {
         dm4c.canvas = new DefaultTopicmapRenderer()
         dm4c.split_panel.set_left_panel(dm4c.canvas)
         //
-        // 2) Setup Load Tracker
+        // 3) Setup Load Tracker
         var items_to_load = pm.retrieve_plugin_list()
         var tracker = new LoadTracker(items_to_load + 2, setup_gui)     // +2 loads: topic types and association types
         //
-        // 3) Load Plugins
+        // 4) Load Plugins
         pm.load_plugins(tracker)
         //
-        // 4) Load Types
+        // 5) Load Types
         type_cache.load_types(tracker)
     })
 }

@@ -25,6 +25,10 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.UriInfo;
+
+import org.apache.commons.io.IOUtils;
 
 import java.io.InputStream;
 import java.util.HashMap;
@@ -183,18 +187,18 @@ public class TopicmapsPlugin extends PluginActivator implements TopicmapsService
     @GET
     @Path("/{id}")
     @Produces("text/html")
-    public InputStream getTopicmapInWebclient() {
+    public String getTopicmapInWebclient(@Context UriInfo uri) {
         // Note: the path parameter is evaluated at client-side
-        return invokeWebclient();
+        return invokeWebclient(uri);
     }
 
     // Note: not part of topicmaps service
     @GET
     @Path("/{id}/topic/{topic_id}")
     @Produces("text/html")
-    public InputStream getTopicmapAndTopicInWebclient() {
+    public String getTopicmapAndTopicInWebclient(@Context UriInfo uri) {
         // Note: the path parameters are evaluated at client-side
-        return invokeWebclient();
+        return invokeWebclient(uri);
     }
 
 
@@ -240,9 +244,11 @@ public class TopicmapsPlugin extends PluginActivator implements TopicmapsService
 
     // ---
 
-    private InputStream invokeWebclient() {
+    private String invokeWebclient(UriInfo uri) {
         try {
-            return dms.getPlugin("de.deepamehta.webclient").getResourceAsStream("web/index.html");
+            InputStream index = dms.getPlugin("de.deepamehta.webclient")//
+                    .getResourceAsStream("web/index.html");
+            return IOUtils.toString(index).replace("__DM_BASE_HREF__", uri.getBaseUri().toString());
         } catch (Exception e) {
             throw new WebApplicationException(e);
         }

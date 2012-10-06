@@ -15,6 +15,7 @@ import de.deepamehta.core.service.ClientState;
 import de.deepamehta.core.service.Directive;
 import de.deepamehta.core.service.Directives;
 import de.deepamehta.core.service.event.AllPluginsActiveListener;
+import de.deepamehta.core.service.event.InitializePluginListener;
 import de.deepamehta.core.service.event.PreUpdateTopicListener;
 import de.deepamehta.core.service.event.PostUpdateTopicListener;
 import de.deepamehta.core.util.DeepaMehtaUtils;
@@ -41,6 +42,7 @@ import java.util.logging.Logger;
 @Consumes("application/json")
 @Produces("application/json")
 public class WebclientPlugin extends PluginActivator implements AllPluginsActiveListener,
+                                                                InitializePluginListener,
                                                                 PreUpdateTopicListener,
                                                                 PostUpdateTopicListener {
 
@@ -142,6 +144,15 @@ public class WebclientPlugin extends PluginActivator implements AllPluginsActive
         }
     }
 
+    @Override
+    public void initializePlugin() {
+        try {
+            registerFilter(new HtmlBaseHrefFilter(), "/de.deepamehta.webclient/(index\\.html)?");
+        } catch (Exception e) {
+            throw new RuntimeException("Registering the request filter failed", e);
+        }
+    }
+
     // ---
 
     @Override
@@ -166,7 +177,6 @@ public class WebclientPlugin extends PluginActivator implements AllPluginsActive
             directives.add(Directive.UPDATE_TOPIC_TYPE, type);
         }
     }
-
 
 
     // ------------------------------------------------------------------------------------------------- Private Methods

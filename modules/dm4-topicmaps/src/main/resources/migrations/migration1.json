@@ -65,7 +65,7 @@
                 {
                     type_uri: "dm4.webclient.view_config",
                     composite: {
-                        dm4.webclient.icon: "/de.deepamehta.topicmaps/images/network.png"
+                        dm4.webclient.icon: "de.deepamehta.topicmaps/images/network.png"
                     }
                 }
             ]

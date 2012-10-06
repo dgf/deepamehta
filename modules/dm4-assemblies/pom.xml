@@ -19,5 +19,6 @@
     <modules>
         <module>features</module>
         <module>dm4-server</module>
+        <module>dm4-webapp</module>
     </modules>
 </project>

@@ -402,7 +402,7 @@ public class AccessControlPlugin extends PluginActivator implements AccessContro
                 "\n    dm4.security.write_requires_login=" + WRITE_REQUIRES_LOGIN +
                 "\n    dm4.security.subnet_filter=\""+ SUBNET_FILTER + "\"");
             //
-            registerFilter(new RequestFilter(this), "/.*");
+            registerFilter(new RequestFilter(this), "/(?!system).*");
         } catch (Exception e) {
             throw new RuntimeException("Registering the request filter failed", e);
         }

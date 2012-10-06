@@ -470,24 +470,12 @@ public class AccessControlPlugin extends PluginActivator implements AccessContro
 
     @Override
     public void preSendTopic(Topic topic, ClientState clientState) {
-        // ### TODO: explain
-        if (isOwnTopic(topic)) {
-            enrichWithPermissions(topic, false);    // write=false
-            return;
-        }
-        //
         logger.fine("### Enriching " + info(topic) + " with its permissions (clientState=" + clientState + ")");
         enrichWithPermissions(topic, hasPermission(getUsername(), Operation.WRITE, topic));
     }
 
     @Override
     public void preSendAssociation(Association assoc, ClientState clientState) {
-        // ### TODO: explain
-        if (isOwnAssociation(assoc)) {
-            enrichWithPermissions(assoc, false);    // write=false
-            return;
-        }
-        //
         logger.fine("### Enriching " + info(assoc) + " with its permissions (clientState=" + clientState + ")");
         enrichWithPermissions(assoc, hasPermission(getUsername(), Operation.WRITE, assoc));
     }
@@ -831,10 +819,14 @@ public class AccessControlPlugin extends PluginActivator implements AccessContro
     }
 
     private TopicModel createAclEntryModel(UserRole userRole, Permissions permissions) {
-        return new TopicModel("dm4.accesscontrol.acl_entry", new CompositeValue()
-            .putRef("dm4.accesscontrol.user_role", userRole.uri)
-            .put("dm4.accesscontrol.permission", permissions.asTopics())
-        );
+        CompositeValue comp = new CompositeValue().putRef("dm4.accesscontrol.user_role", userRole.uri);
+        for (String operationUri : permissions.keySet()) {
+            comp.add("dm4.accesscontrol.permission", new TopicModel("dm4.accesscontrol.permission", new CompositeValue()
+                .putRef("dm4.accesscontrol.operation", operationUri)
+                .put("dm4.accesscontrol.allowed", permissions.get(operationUri))
+            ));
+        }
+        return new TopicModel("dm4.accesscontrol.acl_entry", comp);
     }
 
     // ---
@@ -855,7 +847,8 @@ public class AccessControlPlugin extends PluginActivator implements AccessContro
     }
 
     private boolean isOwnAssociation(Association assoc) {
-        return isOwnRole(assoc.getRole1()) || isOwnRole(assoc.getRole2());            
+        return !assoc.getTypeUri().equals("dm4.core.association") && (isOwnRole(assoc.getRole1()) ||
+                                                                      isOwnRole(assoc.getRole2()));
     }
 
     private boolean isOwnRole(Role role) {

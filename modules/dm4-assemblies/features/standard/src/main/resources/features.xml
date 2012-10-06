@@ -13,7 +13,7 @@
     <bundle start-level="71">mvn:org.codehaus.jettison/jettison/1.3.2</bundle>
     <bundle start-level="72">mvn:org.neo4j/neo4j-kernel/1.2-1.2</bundle>
     <bundle start-level="72">mvn:org.neo4j/neo4j-index/1.2-1.2</bundle>
-    <bundle start-level="73">mvn:de.deepamehta/neo4j-mehtagraph/1.0</bundle>
+    <bundle start-level="73">mvn:de.deepamehta/neo4j-mehtagraph/1.1-SNAPSHOT</bundle>
   </feature>
 
   <feature name="dm4-felix" description="Deepamehta Felix HTTP" version="${project.version}" resolver="(obr)">

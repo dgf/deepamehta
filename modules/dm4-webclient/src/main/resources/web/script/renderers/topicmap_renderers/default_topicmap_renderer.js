@@ -16,7 +16,7 @@ function DefaultTopicmapRenderer() {
     var LABEL_FONT = "1em 'Lucida Grande', Verdana, Arial, Helvetica, sans-serif"   // copied from webclient.css
     var LABEL_COLOR = "black"
     var LABEL_DIST_Y = 4            // in pixel
-    var LABEL_MAX_WIDTH = 200       // in pixel
+    var MAX_LABEL_WIDTH = 200       // in pixel
 
     // Model
     var canvas_topics               // topics displayed on canvas (Object, key: topic ID, value: CanvasTopic)
@@ -34,7 +34,7 @@ function DefaultTopicmapRenderer() {
     var topic_move_in_progress      // true while topic move is in progress (boolean)
     var canvas_move_in_progress     // true while canvas translation is in progress (boolean)
     var association_in_progress     // true while new association is pulled (boolean)
-    var action_topic                // the topic being moved/associated (CanvasTopic)
+    var action_topic                // the topic being selected/moved/associated (CanvasTopic)
     var action_assoc                // the association being clicked (CanvasAssoc)
     var tmp_x, tmp_y                // coordinates while action is in progress
 
@@ -395,6 +395,9 @@ function DefaultTopicmapRenderer() {
      */
     function do_mousedown(event) {
         if (dm4c.LOG_GUI) dm4c.log("Mouse down on canvas!")
+        if (association_in_progress) {
+            return
+        }
         //
         if (event.which == 1) {
             var p = pos(event)
@@ -403,7 +406,7 @@ function DefaultTopicmapRenderer() {
             //
             var ct = find_topic(event)
             if (ct) {
-                if (event.altKey) {
+                if (event.shiftKey) {
                     dm4c.do_select_topic(ct.id)
                     self.begin_association(ct.id, p.x, p.y)
                 } else {
@@ -995,7 +998,8 @@ function DefaultTopicmapRenderer() {
             self.width  = icon.width
             self.height = icon.height
             //
-            label_wrapper = new js.TextWrapper(self.label, LABEL_MAX_WIDTH, 19, ctx)    // line height 19px = 1.2em
+            var label = js.truncate(self.label, dm4c.MAX_TOPIC_LABEL_CHARS)
+            label_wrapper = new js.TextWrapper(label, MAX_LABEL_WIDTH, 19, ctx)    // line height 19px = 1.2em
         }
     }
 
@@ -1074,7 +1078,7 @@ function DefaultTopicmapRenderer() {
     function GridPositioning() {
 
         // Settings
-        var GRID_DIST_X = 220   // LABEL_MAX_WIDTH + 20 pixel padding
+        var GRID_DIST_X = 220   // MAX_LABEL_WIDTH + 20 pixel padding
         var GRID_DIST_Y = 80
         var START_X = 50 - trans_x
         var START_Y = 50

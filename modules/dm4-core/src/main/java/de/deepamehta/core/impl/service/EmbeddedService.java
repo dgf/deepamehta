@@ -235,7 +235,7 @@ public class EmbeddedService implements DeepaMehtaService {
         String info = "assocTypeUri=\"" + assocTypeUri + "\", topic1Id=" + topic1Id + ", topic2Id=" + topic2Id +
             ", roleTypeUri1=\"" + roleTypeUri1 + "\", roleTypeUri2=\"" + roleTypeUri2 + "\", fetchComposite=" +
             fetchComposite + ", clientState=" + clientState;
-        logger.info(info);
+        // logger.info(info);   ### TODO: the Access Control plugin calls getAssociation() very often. It should cache.
         DeepaMehtaTransaction tx = beginTx();
         try {
             AssociationModel model = storage.getAssociation(assocTypeUri, topic1Id, topic2Id, roleTypeUri1,
@@ -275,6 +275,25 @@ public class EmbeddedService implements DeepaMehtaService {
     }
 
     // ---
+
+    @Override
+    public Set<RelatedAssociation> getAssociations(String assocTypeUri) {
+        DeepaMehtaTransaction tx = beginTx();
+        try {
+            Set<RelatedAssociation> assocs = getAssociationType(assocTypeUri, null).getRelatedAssociations(
+                null, "dm4.core.type", "dm4.core.instance", null, false, false);
+                // ### FIXME: assocTypeUri=null but should be "dm4.core.instantiation", but not stored for assocs.
+                // othersAssocTypeUri=null, fetchComposite=false, fetchRelatingComposite=false
+            tx.success();
+            return assocs;
+        } catch (Exception e) {
+            logger.warning("ROLLBACK!");
+            throw new RuntimeException("Retrieving associations by type failed (assocTypeUri=\"" + assocTypeUri + "\")",
+                e);
+        } finally {
+            tx.finish();
+        }
+    }
 
     @Override
     public Set<Association> getAssociations(long topic1Id, long topic2Id) {

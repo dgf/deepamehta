@@ -10,30 +10,38 @@
     <version>4.0.13-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-    <parent>
-        <groupId>de.deepamehta</groupId>
-        <artifactId>deepamehta-global</artifactId>
-        <version>4.0.13-SNAPSHOT</version>
-        <relativePath>../../pom.xml</relativePath>
-    </parent>
-
     <properties>
+
+        <!-- Webserver -->
+        <org.osgi.service.http.port>8080</org.osgi.service.http.port>
+        <org.osgi.service.http.port.secure>4433</org.osgi.service.http.port.secure>
+        <org.apache.felix.http.enable>true</org.apache.felix.http.enable>
+        <org.apache.felix.https.enable>false</org.apache.felix.https.enable>
+        <org.apache.felix.https.keystore.password></org.apache.felix.https.keystore.password>
+        <org.apache.felix.https.keystore.key.password></org.apache.felix.https.keystore.key.password>
+
+        <!-- Request Filter -->
+        <dm4.security.read_requires_login>false</dm4.security.read_requires_login>
+        <dm4.security.write_requires_login>true</dm4.security.write_requires_login>
+        <dm4.security.subnet_filter>127.0.0.1/32</dm4.security.subnet_filter>
+
+        <!-- Database -->
+        <dm4.database.path>${project.basedir}/deepamehta-db</dm4.database.path>
+
+        <!-- File Repository -->
         <dm4.filerepo.path>${project.basedir}</dm4.filerepo.path>
+
+        <!-- Build and Runtime environment -->
+        <felix.log.level>2</felix.log.level>
+        <file.encoding>UTF-8</file.encoding>
         <java.util.logging.config.file>
             ${project.basedir}/src/main/resources/logging.properties
         </java.util.logging.config.file>
-        <felix.log.level>2</felix.log.level>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
     <dependencyManagement>
         <dependencies>
-            <dependency>
-                <groupId>javax.ws.rs</groupId>
-                <artifactId>jsr311-api</artifactId>
-                <version>1.1.1</version>
-                <scope>provided</scope>
-            </dependency>
-
             <dependency>
                 <groupId>commons-io</groupId>
                 <artifactId>commons-io</artifactId>
@@ -48,6 +56,14 @@
             <groupId>de.deepamehta</groupId>
             <artifactId>deepamehta-api</artifactId>
             <version>4.0.13-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>javax.ws.rs</groupId>
+            <artifactId>jsr311-api</artifactId>
+            <version>1.1.1</version>
+            <scope>provided</scope>
+            <optional>true</optional>
         </dependency>
 
         <!-- Testing -->
@@ -96,6 +112,7 @@
                 </configuration>
             </plugin>
 
+            <!-- creates JavaDoc with UML and core API links -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
@@ -117,7 +134,43 @@
                     <useStandardDocletOptions>true</useStandardDocletOptions>
                 </configuration>
             </plugin>
+
+            <!-- Deletes OSGi container configuration as created by Pax Runner -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-clean-plugin</artifactId>
+                <version>2.4.1</version>
+                <configuration>
+                    <filesets>
+                        <fileset>
+                            <directory>runner</directory>
+                        </fileset>
+                    </filesets>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
+
+    <repositories>
+        <repository>
+            <id>central</id>
+            <url>http://repo1.maven.org/maven2</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>maven2-repository.java.net</id>
+            <name>Java.net Repository for Maven</name>
+            <url>http://download.java.net/maven/2/</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>deepamehta-public-repository</id>
+            <url>http://deepamehta.newthinking.net/maven2</url>
+        </repository>
+    </repositories>
 
 </project>

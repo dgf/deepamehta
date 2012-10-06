@@ -98,13 +98,13 @@ public class PluginActivator implements BundleActivator, PluginContext {
         plugin.publishDirectory(directoryPath, uriNamespace, securityHandler);
     }
 
-    protected void registerFilter(Filter filter) {
+    protected void registerFilter(Filter filter, String pattern) {
         try {
             ServiceReference sRef = bundleContext.getServiceReference(ExtHttpService.class.getName());
             if (sRef != null) {
                 ExtHttpService service = (ExtHttpService) bundleContext.getService(sRef);
                 // Dictionary initParams = null, int ranking = 0, HttpContext context = null
-                service.registerFilter(filter, "/.*", null, 0, null);
+                service.registerFilter(filter, pattern, null, 0, null);
             } else {
                 throw new RuntimeException("ExtHttpService not available");
             }

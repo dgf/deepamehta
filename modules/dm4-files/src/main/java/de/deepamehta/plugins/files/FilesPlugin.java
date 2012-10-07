@@ -331,8 +331,9 @@ public class FilesPlugin extends PluginActivator implements FilesService, Securi
     @Override
     public boolean handleSecurity(HttpServletRequest request, HttpServletResponse response) {
         try {
-            String path = request.getRequestURI().substring(FILE_REPOSITORY_URI.length());
-            path = JavaUtils.decodeURIComponent(path);
+            String uri = request.getRequestURI();
+            int pathStart = uri.indexOf(FILE_REPOSITORY_URI) + FILE_REPOSITORY_URI.length();
+            String path = JavaUtils.decodeURIComponent(uri.substring(pathStart + 1));
             logger.info("### repository path=\"" + path + "\"");
             enforeSecurity(path);
             return true;

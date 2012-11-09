@@ -46,6 +46,30 @@
         </dependency>
         <dependency>
             <groupId>de.deepamehta</groupId>
+            <artifactId>deepamehta-images</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>de.deepamehta</groupId>
+            <artifactId>deepamehta-mail</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>de.deepamehta</groupId>
+            <artifactId>dm4-example</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.poemspace</groupId>
+            <artifactId>dm4-poemspace</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>de.deepamehta</groupId>
             <artifactId>deepamehta-bundles</artifactId>
             <version>4.0.13-SNAPSHOT</version>
             <type>pom</type>
@@ -181,7 +205,11 @@
                                 deepamehta-webbrowser,
                                 deepamehta-webclient,
                                 deepamehta-webservice,
-                                deepamehta-workspaces
+                                deepamehta-workspaces,
+
+                                deepamehta-images,
+                                deepamehta-mail,
+                                dm4-poemspace
                             </includeArtifactIds>
                             <outputDirectory>
                                 ${project.build.directory}/dependencies/bundles

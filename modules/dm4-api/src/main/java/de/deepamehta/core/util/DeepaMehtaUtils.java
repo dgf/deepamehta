@@ -17,6 +17,7 @@ import org.codehaus.jettison.json.JSONObject;
 import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.URL;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
@@ -28,29 +29,46 @@ import java.util.logging.Logger;
 
 public class DeepaMehtaUtils {
 
-    private static Logger logger = Logger.getLogger("de.deepamehta.core.util.DeepaMehtaUtils");
+    static Logger logger = Logger.getLogger(DeepaMehtaUtils.class.getName());
 
+    static String dmUrl = System.getProperty("dm4.app.url");
 
+    static String osgiPort = System.getProperty("org.osgi.service.http.port");
 
     // ************
     // *** URLs ***
     // ************
 
-
+    public static String getDmUrl() {
+        return dmUrl == null ? "" : dmUrl;
+    }
 
     /**
      * Checks if the given URL's host and port refers to this DeepaMehta installation.
      */
     public static boolean isDeepaMehtaURL(URL url) {
         try {
+            // check optional configured application URL
+            if (dmUrl != null) {
+                if (url.getPath().toString().startsWith(dmUrl)) {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+
             // check host
             InetAddress dmAddress = InetAddress.getLocalHost();             // throws UnknownHostException
-            InetAddress urlAddress = InetAddress.getByName(url.getHost());  // throws UnknownHostException
-            if (!dmAddress.equals(urlAddress)) {
+            try {
+                if (!dmAddress.equals(InetAddress.getByName(url.getHost()))) {
+                    return false;
+                }
+            } catch (UnknownHostException e) {
                 return false;
             }
+
             // check port
-            int dmPort = Integer.parseInt(System.getProperty("org.osgi.service.http.port"));
+            int dmPort = Integer.parseInt(osgiPort);
             int urlPort = url.getPort();
             if (urlPort == -1) {
                 urlPort = url.getDefaultPort();

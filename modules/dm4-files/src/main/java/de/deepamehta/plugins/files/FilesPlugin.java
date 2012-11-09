@@ -250,7 +250,7 @@ public class FilesPlugin extends PluginActivator implements FilesService, Securi
                 return null;
             }
             //
-            String path = url.getPath();
+            String path = url.getPath().substring(DeepaMehtaUtils.getDmUrl().length());
             if (!path.startsWith(FILE_REPOSITORY_URI)) {
                 logger.info(operation + " => null");
                 return null;

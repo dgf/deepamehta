@@ -27,9 +27,10 @@
                 <include>org.apache.felix:org.apache.felix.configadmin</include>
                 <include>org.apache.felix:org.apache.felix.eventadmin</include>
                 <include>org.apache.felix:org.apache.felix.gogo.*</include>
-                <include>org.apache.felix:org.apache.felix.http.jetty</include>
                 <include>org.apache.servicemix.bundles:*</include>
                 <include>org.codehaus.jettison:*</include>
+                <include>org.ops4j.pax.web:pax-web-jetty-bundle</include>
+                <include>org.slf4j:slf4j-*</include>
             </includes>
             <fileMode>0444</fileMode>
             <outputDirectory>bundle</outputDirectory>

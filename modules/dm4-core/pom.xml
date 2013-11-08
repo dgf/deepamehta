@@ -42,11 +42,6 @@
             <groupId>javax.servlet</groupId>
             <artifactId>servlet-api</artifactId>
         </dependency>
-        <!-- Felix HTTP API ### TODO: drop this -->
-        <dependency>
-            <groupId>org.apache.felix</groupId>
-            <artifactId>org.apache.felix.http.api</artifactId>
-        </dependency>
     </dependencies>
 
     <build>

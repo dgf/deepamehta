@@ -11,6 +11,12 @@ import de.deepamehta.core.service.Directives;
 import de.deepamehta.core.service.Listener;
 import de.deepamehta.core.service.event.*;
 
+// ### TODO: hide Jersey internals. Move to JAX-RS 2.0.
+import com.sun.jersey.spi.container.ContainerRequest;
+import com.sun.jersey.spi.container.ContainerResponse;
+
+import javax.servlet.http.HttpServletRequest;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -106,6 +112,31 @@ enum CoreEvent {
         void deliver(Listener listener, Object... params) {
             ((PostDeleteAssociationListener) listener).postDeleteAssociation(
                 (Association) params[0], (Directives) params[1]
+            );
+        }
+    },
+
+    SERVICE_REQUEST_FILTER(ServiceRequestFilterListener.class) {
+        @Override
+        void deliver(Listener listener, Object... params) {
+            ((ServiceRequestFilterListener) listener).serviceRequestFilter(
+                (ContainerRequest) params[0]
+            );
+        }
+    },
+    SERVICE_RESPONSE_FILTER(ServiceResponseFilterListener.class) {
+        @Override
+        void deliver(Listener listener, Object... params) {
+            ((ServiceResponseFilterListener) listener).serviceResponseFilter(
+                (ContainerResponse) params[0]
+            );
+        }
+    },
+    RESOURCE_REQUEST_FILTER(ResourceRequestFilterListener.class) {
+        @Override
+        void deliver(Listener listener, Object... params) {
+            ((ResourceRequestFilterListener) listener).resourceRequestFilter(
+                (HttpServletRequest) params[0]
             );
         }
     },

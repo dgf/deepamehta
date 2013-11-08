@@ -1,5 +1,6 @@
 package de.deepamehta.core.impl;
 
+import de.deepamehta.core.osgi.PluginActivator;
 import de.deepamehta.core.service.PluginInfo;
 
 import org.osgi.framework.Bundle;
@@ -43,53 +44,34 @@ class PluginManager {
     // ----------------------------------------------------------------------------------------- Package Private Methods
 
     /**
-     * Activates a plugin. Called once the plugin's requirements are met
-     * (see PluginImpl.checkRequirementsForActivation()).
-     *
-     * Activation comprises:
-     *   - install the plugin in the database (includes migrations, post-install event, type introduction)
-     *   - initialize the plugin
-     *   - register the plugin's listeners
-     *   - register the plugin's OSGi service
-     *   - add the plugin to the pool of activated plugins
-     *   - post the PLUGIN_ACTIVATED OSGi event.
-     *   - check if all plugins are active, and if so, fire the {@link CoreEvent.ALL_PLUGINS_ACTIVE} event.
-     *
-     * If this plugin is already activated, nothing is performed.
-     * This happens e.g. when a dependent plugin is redeployed.
-     *
+     * Activates a plugin and fires activation events.
+     * Called once the plugin's requirements are met (see PluginImpl.checkRequirementsForActivation()).
+     * <p>
+     * After activation posts the PLUGIN_ACTIVATED OSGi event. Then checks if all installed plugins are active, and if
+     * so, fires the {@link CoreEvent.ALL_PLUGINS_ACTIVE} core event.
+     * <p>
+     * If the plugin is already activated, performs nothing. This happens e.g. when a dependent plugin is redeployed.
+     * <p>
      * Note: this method is synchronized. While a plugin is activated no other plugin must be activated. Otherwise
      * the "type introduction" mechanism might miss some types. Consider this unsynchronized scenario: plugin B
      * starts running its migrations just in the moment between plugin A's type introduction and listener registration.
      * Plugin A might miss some of the types created by plugin B.
      */
     synchronized void activatePlugin(PluginImpl plugin) {
-        try {
-            // Note: we must not activate a plugin twice.
-            if (_isPluginActivated(plugin.getUri())) {
-                logger.info("Activation of " + plugin + " ABORTED -- already activated");
-                return;
-            }
+        // Note: we must not activate a plugin twice.
+        if (!_isPluginActivated(plugin.getUri())) {
             //
-            logger.info("----- Activating " + plugin + " -----");
-            plugin.installPluginInDB();
-            plugin.initializePlugin();
-            plugin.registerListeners();
-            plugin.registerPluginService();
-            // Note: the listeners must be registered *after* the plugin is installed in the database and its
-            // postInstall() hook is triggered (see PluginImpl.installPluginInDB()).
-            // Consider the Access Control plugin: it can't set a topic's creator before the "admin" user is created.
-            addToActivatedPlugins(plugin);
-            logger.info("----- Activation of " + plugin + " complete -----");
+            _activatePlugin(plugin);
             //
             plugin.postPluginActivatedEvent();
             //
             if (checkAllPluginsActivated()) {
-                logger.info("########## All Plugins Activated ##########");
+                logger.info("########## All Plugins Active ##########");
                 dms.fireEvent(CoreEvent.ALL_PLUGINS_ACTIVE);
             }
-        } catch (Exception e) {
-            throw new RuntimeException("Activation of " + plugin + " failed", e);
+        } else {
+            logger.info("Activation of " + plugin + " ABORTED -- already activated");
+            return;
         }
     }
 
@@ -127,6 +109,35 @@ class PluginManager {
     // ------------------------------------------------------------------------------------------------- Private Methods
 
     /**
+     * Activates a plugin.
+     *
+     * Activation comprises:
+     *   - install the plugin in the database (includes migrations, post-install event, type introduction)
+     *   - initialize the plugin
+     *   - register the plugin's listeners
+     *   - register the plugin's OSGi service
+     *   - add the plugin to the pool of activated plugins
+     */
+    private void _activatePlugin(PluginImpl plugin) {
+        try {
+            logger.info("----- Activating " + plugin + " -----");
+            //
+            plugin.installPluginInDB();
+            plugin.initializePlugin();
+            plugin.registerListeners();
+            plugin.registerPluginService();
+            // Note: the listeners must be registered *after* the plugin is installed in the database and its
+            // postInstall() hook is triggered (see PluginImpl.installPluginInDB()).
+            // Consider the Access Control plugin: it can't set a topic's creator before the "admin" user is created.
+            addToActivatedPlugins(plugin);
+            //
+            logger.info("----- Activation of " + plugin + " complete -----");
+        } catch (Exception e) {
+            throw new RuntimeException("Activation of " + plugin + " failed", e);
+        }
+    }
+
+    /**
      * Checks if all plugins are activated.
      */
     private boolean checkAllPluginsActivated() {
@@ -147,14 +158,21 @@ class PluginManager {
     }
 
     /**
-     * Checks if an arbitrary bundle is a DeepaMehta plugin.
+     * Plugin detection: checks if an arbitrary bundle is a DeepaMehta plugin.
      */
     private boolean isDeepaMehtaPlugin(Bundle bundle) {
-        String packages = (String) bundle.getHeaders().get("Import-Package");
-        // Note 1: 3rd party bundles might not import any package. So, "packages" might be null.
-        // Note 2: all DeepaMehta plugin bundles depend on de.deepamehta.core.osgi.PluginActivator so we can
-        // use that package for detection. The core bundle on the other hand does not import that package.
-        return packages != null && packages.contains("de.deepamehta.core.osgi");
+        try {
+            String activatorClassName = (String) bundle.getHeaders().get("Bundle-Activator");
+            if (activatorClassName != null) {
+                Class activatorClass = bundle.loadClass(activatorClassName);    // throws ClassNotFoundException
+                return PluginActivator.class.isAssignableFrom(activatorClass);
+            } else {
+                // Note: 3rd party bundles may have no activator
+                return false;
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Plugin detection failed for bundle " + bundle, e);
+        }
     }
 
     // ---

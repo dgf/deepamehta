@@ -7,7 +7,6 @@ import com.sun.jersey.api.core.ResourceConfig;
 import com.sun.jersey.spi.container.servlet.ServletContainer;
 
 import org.osgi.framework.Bundle;
-import org.osgi.framework.BundleContext;
 import org.osgi.service.http.HttpContext;
 import org.osgi.service.http.HttpService;
 
@@ -15,10 +14,15 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import javax.ws.rs.Path;
+import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.MultivaluedMap;
+import javax.ws.rs.core.Response;
 
+import java.io.IOException;
 import java.net.URL;
-import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 
@@ -42,6 +46,8 @@ public class WebPublishingService {
 
     private HttpService httpService;
 
+    private EmbeddedService dms;
+
     private Logger logger = Logger.getLogger(getClass().getName());
 
     // ---------------------------------------------------------------------------------------------------- Constructors
@@ -49,13 +55,15 @@ public class WebPublishingService {
     public WebPublishingService(EmbeddedService dms, HttpService httpService) {
         try {
             logger.info("Setting up the Web Publishing service");
+            this.dms = dms;
             //
             // create web application
             this.rootApplication = new DefaultResourceConfig();
             //
-            // setup response filter
-            rootApplication.getProperties().put(ResourceConfig.PROPERTY_CONTAINER_RESPONSE_FILTERS,
-                new JerseyResponseFilter(dms));
+            // setup container filters
+            Map<String, Object> properties = rootApplication.getProperties();
+            properties.put(ResourceConfig.PROPERTY_CONTAINER_REQUEST_FILTERS, new JerseyRequestFilter(dms));
+            properties.put(ResourceConfig.PROPERTY_CONTAINER_RESPONSE_FILTERS, new JerseyResponseFilter(dms));
             //
             // deploy web application in container
             this.jerseyServlet = new ServletContainer(rootApplication);
@@ -67,6 +75,8 @@ public class WebPublishingService {
     }
 
     // ----------------------------------------------------------------------------------------- Package Private Methods
+
+
 
     // === Web Resources ===
 
@@ -101,6 +111,8 @@ public class WebPublishingService {
             throw new RuntimeException(e);
         }
     }
+
+
 
     // === REST Resources ===
 
@@ -159,6 +171,10 @@ public class WebPublishingService {
     }
 
     // ------------------------------------------------------------------------------------------------- Private Methods
+
+
+
+    // === Jersey Servlet ===
 
     private Set<Class<?>> getClasses() {
         return rootApplication.getClasses();
@@ -233,45 +249,69 @@ public class WebPublishingService {
         jerseyServlet.reload();
     }
 
+
+
+    // === Resource Request Filter ===
+
+    private boolean resourceRequestFilter(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        try {
+            dms.fireEvent(CoreEvent.RESOURCE_REQUEST_FILTER, request);
+            return true;
+        } catch (WebApplicationException e) {
+            sendError(response, e.getResponse());
+            return false;
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "Resource request filtering failed for " + request.getRequestURI(), e);
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            return false;
+        }
+    }
+
+    private void sendError(HttpServletResponse servletResponse, Response response) throws IOException {
+        // transfer headers
+        MultivaluedMap<String, Object> metadata = response.getMetadata();
+        for (String header : metadata.keySet()) {
+            for (Object value : metadata.get(header)) {
+                servletResponse.addHeader(header, (String) value);
+            }
+        }
+        //
+        servletResponse.sendError(response.getStatus(), (String) response.getEntity());   // throws IOException
+    }
+
+
+
     // ------------------------------------------------------------------------------------------------- Private Classes
 
-    /**
-     * Custom HttpContext to map resource name "/" to URL "/index.html"
-     */
     private class BundleHTTPContext implements HttpContext {
 
         private Bundle bundle;
-        private HttpContext httpContext;
 
         private BundleHTTPContext(Bundle bundle) {
             this.bundle = bundle;
-            this.httpContext = httpService.createDefaultHttpContext();
         }
 
         // ---
 
         @Override
         public URL getResource(String name) {
-            URL url;
+            // map resource name "/" to "/index.html"
             if (name.equals("web/")) {
-                url = bundle.getResource("/web/index.html");
-            } else {
-                url = bundle.getResource(name);
+                name = "/web/index.html";
             }
-            // logger.info("### Mapping resource name \"" + name + "\" for plugin \"" +
-            //     pluginName + "\"\n          => URL \"" + url + "\"");
-            return url;
+            //
+            return bundle.getResource(name);
         }
 
         @Override
         public String getMimeType(String name) {
-            return httpContext.getMimeType(name);
+            return null;
         }
 
         @Override
         public boolean handleSecurity(HttpServletRequest request, HttpServletResponse response)
                                                                             throws java.io.IOException {
-            return httpContext.handleSecurity(request, response);
+            return resourceRequestFilter(request, response);
         }
     }
 
@@ -279,12 +319,10 @@ public class WebPublishingService {
 
         private String directoryPath;
         private SecurityHandler securityHandler;
-        private HttpContext httpContext;
 
         private DirectoryHTTPContext(String directoryPath, SecurityHandler securityHandler) {
             this.directoryPath = directoryPath;
             this.securityHandler = securityHandler;
-            this.httpContext = httpService.createDefaultHttpContext();
         }
 
         // ---
@@ -302,17 +340,21 @@ public class WebPublishingService {
 
         @Override
         public String getMimeType(String name) {
-            return httpContext.getMimeType(name);
+            return null;
         }
 
         @Override
         public boolean handleSecurity(HttpServletRequest request, HttpServletResponse response)
                                                                             throws java.io.IOException {
-            if (securityHandler != null) {
-                return securityHandler.handleSecurity(request, response);
-            } else {
-                return httpContext.handleSecurity(request, response);
+            boolean doService = resourceRequestFilter(request, response);
+            if (doService) {
+                if (securityHandler != null) {
+                    return securityHandler.handleSecurity(request, response);
+                } else {
+                    return true;
+                }
             }
+            return false;
         }
     }
 }

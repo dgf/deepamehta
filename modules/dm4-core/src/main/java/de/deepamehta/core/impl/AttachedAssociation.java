@@ -199,9 +199,9 @@ class AttachedAssociation extends AttachedDeepaMehtaObject implements Associatio
     public RelatedAssociation getRelatedAssociation(String assocTypeUri, String myRoleTypeUri,
                                                                          String othersRoleTypeUri) {
         RelatedAssociationModel assoc = dms.storage.fetchAssociationRelatedAssociation(getId(),
-            assocTypeUri, myRoleTypeUri, othersRoleTypeUri, null);      // othersAssocTypeUri=null
-        return assoc != null ? dms.attach(assoc, false, false) : null;  // fetchComposite=false,
-                                                                        // fetchRelatingComposite=false
+            assocTypeUri, myRoleTypeUri, othersRoleTypeUri, null); // othersAssocTypeUri=null
+        return assoc != null ? dms.instantiateRelatedAssociation(assoc, false, false) : null; 
+                                                                   // fetchComposite=false, fetchRelatingComposite=false
     }
 
 
@@ -219,10 +219,10 @@ class AttachedAssociation extends AttachedDeepaMehtaObject implements Associatio
     @Override
     public ResultSet<RelatedTopic> getRelatedTopics(List assocTypeUris, String myRoleTypeUri, String othersRoleTypeUri,
                                     String othersTopicTypeUri, boolean fetchComposite, boolean fetchRelatingComposite,
-                                    int maxResultSize, ClientState clientState) {
+                                    int maxResultSize) {
         ResultSet<RelatedTopicModel> topics = dms.storage.fetchAssociationRelatedTopics(getId(), assocTypeUris,
             myRoleTypeUri, othersRoleTypeUri, othersTopicTypeUri, maxResultSize);
-        return dms.attach(topics, fetchComposite, fetchRelatingComposite, clientState);
+        return dms.instantiateRelatedTopics(topics, fetchComposite, fetchRelatingComposite);
     }
 
     // --- Association Retrieval ---
@@ -232,12 +232,37 @@ class AttachedAssociation extends AttachedDeepaMehtaObject implements Associatio
                                                                                    long othersTopicId) {
         AssociationModel assoc = dms.storage.fetchAssociationBetweenTopicAndAssociation(assocTypeUri,
             othersTopicId, getId(), othersRoleTypeUri, myRoleTypeUri);
-        return assoc != null ? dms.attach(assoc, false) : null;                         // fetchComposite=false
+        return assoc != null ? dms.instantiateAssociation(assoc, false) : null;     // fetchComposite=false
     }
 
     @Override
     public Set<Association> getAssociations() {
-        return dms.attach(dms.storage.fetchAssociationAssociations(getId()), false);    // fetchComposite=false
+        return dms.instantiateAssociations(dms.storage.fetchAssociationAssociations(getId()), false);
+                                                                                    // fetchComposite=false
+    }
+
+
+
+    // === Properties ===
+
+    @Override
+    public Object getProperty(String propUri) {
+        return dms.storage.fetchAssociationProperty(getId(), propUri);
+    }
+
+    @Override
+    public void setProperty(String propUri, Object propValue, boolean addToIndex) {
+        dms.storage.storeAssociationProperty(getId(), propUri, propValue, addToIndex);
+    }
+
+    @Override
+    public boolean hasProperty(String propUri) {
+        return dms.storage.hasAssociationProperty(getId(), propUri);
+    }
+
+    @Override
+    public void removeProperty(String propUri) {
+        dms.storage.removeAssociationProperty(getId(), propUri);
     }
 
 
@@ -340,8 +365,8 @@ class AttachedAssociation extends AttachedDeepaMehtaObject implements Associatio
     }
 
     private Association fetchInstantiation() {
-        RelatedTopic assocType = getRelatedTopic("dm4.core.instantiation",
-            "dm4.core.instance", "dm4.core.type", "dm4.core.assoc_type", false, false, null);
+        RelatedTopic assocType = getRelatedTopic("dm4.core.instantiation", "dm4.core.instance", "dm4.core.type",
+            "dm4.core.assoc_type", false, false);
         //
         if (assocType == null) {
             throw new RuntimeException("Association " + getId() + " is not associated to an association type");

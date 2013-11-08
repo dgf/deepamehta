@@ -1,7 +1,5 @@
 function RESTClient(core_service_uri) {
 
-    var LOG_AJAX_REQUESTS = false
-
     // -------------------------------------------------------------------------------------------------- Public Methods
 
 
@@ -10,7 +8,7 @@ function RESTClient(core_service_uri) {
 
     this.get_topic_by_id = function(topic_id, fetch_composite) {
         var params = new RequestParameter({fetch_composite: fetch_composite})
-        return request("GET", "/topic/" + topic_id + "?" + params.to_query_string())
+        return request("GET", "/topic/" + topic_id + params.to_query_string())
     }
 
     /**
@@ -42,7 +40,7 @@ function RESTClient(core_service_uri) {
      */
     this.get_topics = function(type_uri, fetch_composite, sort, max_result_size) {
         var params = new RequestParameter({fetch_composite: fetch_composite, max_result_size: max_result_size})
-        var result = request("GET", "/topic/by_type/" + type_uri + "?" + params.to_query_string())
+        var result = request("GET", "/topic/by_type/" + type_uri + params.to_query_string())
         sort_topics(result.items, sort)
         return result
     }
@@ -67,14 +65,14 @@ function RESTClient(core_service_uri) {
     this.get_topic_related_topics = function(topic_id, traversal_filter, sort, max_result_size) {
         var params = new RequestParameter(traversal_filter)
         params.add("max_result_size", max_result_size)
-        var result = request("GET", "/topic/" + topic_id + "/related_topics?" + params.to_query_string())
+        var result = request("GET", "/topic/" + topic_id + "/related_topics" + params.to_query_string())
         sort_topics(result.items, sort)
         return result
     }
 
     this.search_topics = function(text, field_uri) {
         var params = new RequestParameter({search: text, field: field_uri})
-        return request("GET", "/topic?" + params.to_query_string())
+        return request("GET", "/topic" + params.to_query_string())
     }
 
     this.create_topic = function(topic_model) {
@@ -82,7 +80,7 @@ function RESTClient(core_service_uri) {
     }
 
     this.update_topic = function(topic_model) {
-        return request("PUT", "/topic", topic_model)
+        return request("PUT", "/topic/" + topic_model.id, topic_model)
     }
 
     this.delete_topic = function(id) {
@@ -95,7 +93,7 @@ function RESTClient(core_service_uri) {
 
     this.get_association_by_id = function(assoc_id, fetch_composite) {
         var params = new RequestParameter({fetch_composite: fetch_composite})
-        return request("GET", "/association/" + assoc_id + "?" + params.to_query_string())
+        return request("GET", "/association/" + assoc_id + params.to_query_string())
     }
 
     /**
@@ -111,7 +109,7 @@ function RESTClient(core_service_uri) {
                                                                                           fetch_composite) {
         var params = new RequestParameter({fetch_composite: fetch_composite})
         return request("GET", "/association/" + assoc_type_uri + "/" +  topic1_id + "/" + topic2_id + "/" +
-            role_type1_uri + "/" + role_type2_uri + "?" + params.to_query_string())
+            role_type1_uri + "/" + role_type2_uri + params.to_query_string())
     }
 
     /**
@@ -146,7 +144,7 @@ function RESTClient(core_service_uri) {
     this.get_association_related_topics = function(assoc_id, traversal_filter, sort, max_result_size) {
         var params = new RequestParameter(traversal_filter)
         params.add("max_result_size", max_result_size)
-        var result = request("GET", "/association/" + assoc_id + "/related_topics?" + params.to_query_string())
+        var result = request("GET", "/association/" + assoc_id + "/related_topics" + params.to_query_string())
         sort_topics(result.items, sort)
         return result
     }
@@ -156,7 +154,7 @@ function RESTClient(core_service_uri) {
     }
 
     this.update_association = function(assoc_model) {
-        return request("PUT", "/association", assoc_model)
+        return request("PUT", "/association/" + assoc_model.id, assoc_model)
     }
 
     this.delete_association = function(id) {
@@ -221,21 +219,23 @@ function RESTClient(core_service_uri) {
 
 
 
-    // === Utilities for plugin developers ===
+    // === Plugin Support ===
 
     /**
-     * Sends an AJAX request. The URI is interpreted as an absolute URI.
+     * Sends an AJAX request. The URI is interpreted as absolute.
      *
-     * This utility method is called by plugins who register additional REST resources at an individual
-     * namespace (server-side) and add corresponding service calls to the REST client instance.
-     * For example, see the DeepaMehta 4 Topicmaps plugin.
+     * A plugin uses this method to send a request to its REST service.
+     * As an example see the DeepaMehta 4 Topicmaps plugin.
      */
-    this.request = function(method, uri, data, headers, response_data_type) {
-        return request(method, uri, data, undefined, headers, response_data_type, true)     // callback=undefined
+    this.request = function(method, uri, data, callback, headers, response_data_type) {
+        return request(method, uri, data, callback, headers, response_data_type, true)
     }
 
     /**
-     * This utility method is called by plugins who register additional REST resources.
+     * Helps with construction of the URI's query string part.
+     *
+     * This helper method might be useful for plugins which provides a REST service.
+     * As an example see the DeepaMehta 4 Webclient plugin.
      */
     this.createRequestParameter = function(params) {
         return new RequestParameter(params)
@@ -268,13 +268,19 @@ function RESTClient(core_service_uri) {
      * @return  For successful synchronous requests: the data returned from the server. Otherwise undefined.
      */
     function request(method, uri, data, callback, headers, response_data_type, is_absolute_uri) {
+        var request = {
+            method: method,
+            uri: is_absolute_uri ? uri : core_service_uri + uri,
+            headers: headers || {},
+            data: data
+        }
+        dm4c.fire_event("pre_send_request", request)
+        //
         var async = callback != undefined
         var status          // used only for synchronous request: "success" if request was successful
         var response_data   // used only for synchronous successful request: the response data (response body)
         //
-        if (LOG_AJAX_REQUESTS) dm4c.log(method + " " + uri + "\n..... " + JSON.stringify(data))
-        //
-        var content_type = headers && headers["Content-Type"] || "application/json"       // set default
+        var content_type = request.headers["Content-Type"] || "application/json"       // set default
         if (content_type == "application/json") {
             data = JSON.stringify(data)
         }
@@ -283,29 +289,31 @@ function RESTClient(core_service_uri) {
         //
         $.ajax({
             type: method,
-            url: is_absolute_uri ? uri : core_service_uri + uri,
+            url: request.uri,
             contentType: content_type,
-            headers: headers,
+            headers: request.headers,
             data: data,
             dataType: response_data_type,
             processData: false,
-            async: async,
-            success: function(data, text_status, jq_xhr) {
-                if (LOG_AJAX_REQUESTS) dm4c.log("..... " + jq_xhr.status + " " + jq_xhr.statusText +
-                    "\n..... " + JSON.stringify(data))
-                if (callback) {
-                    callback(data)
-                }
-                response_data = data
-            },
-            error: function(jq_xhr, text_status, error_thrown) {
-                if (LOG_AJAX_REQUESTS) dm4c.log("..... " + jq_xhr.status + " " + jq_xhr.statusText +
-                    "\n..... exception: " + JSON.stringify(error_thrown))
-                throw "RESTClientError: " + method + " request failed (" + text_status + ": " + error_thrown + ")"
-            },
-            complete: function(jq_xhr, text_status) {
-                status = text_status
+            async: async
+        })
+        .done(function(data, text_status, jq_xhr) {
+            if (callback) {
+                callback(data)
             }
+            response_data = data
+        })
+        .fail(function(jq_xhr, text_status, error_thrown) {
+            // Note: since at least jQuery 2.0.3 an exception thrown from the "error" callback (as registered in the
+            // $.ajax() settings object) does not reach the calling plugin. (In jQuery 1.7.2 it did.) Apparently the
+            // exception is catched by jQuery. That's why we use the Promise style to register our callbacks (done(),
+            // fail(), always()). An exception thrown from fail() does reach the calling plugin.
+            throw "RESTClientError: " + method + " request failed (" + text_status + ": " + error_thrown + ")"
+        })
+        .always(function(dummy, text_status) {
+            // Note: the signature of the always() callback varies. Depending on the response status it takes
+            // shape either of the done() or the fail() callback.
+            status = text_status
         })
         if (!async && status == "success") {
             return response_data
@@ -340,7 +348,11 @@ function RESTClient(core_service_uri) {
         }
 
         this.to_query_string = function() {
-            return encodeURI(param_array.join("&"))
+            var query_string = encodeURI(param_array.join("&"))
+            if (query_string) {
+                query_string = "?" + query_string
+            }
+            return query_string
         }
 
         function add(param_name, value) {
@@ -362,24 +374,17 @@ function RESTClient(core_service_uri) {
 
     function sort_topics(topics, sort) {
         if (sort) {
-            topics.sort(topics_sort_function)
+            topics.sort(compare_topics)
         }
     }
 
-    /**
-     * Compares two topics.
-     * Note: the topics are expected to be "related topics", that is they have an "assoc" property.
-     */
-    function topics_sort_function(topic_1, topic_2) {
-        if (topic_1.assoc.type_uri != topic_2.assoc.type_uri) {
-            // 1st sort criteria: association type
-            return compare(topic_1.assoc.type_uri, topic_2.assoc.type_uri)
-        } else if (topic_1.type_uri != topic_2.type_uri) {
-            // 2nd sort criteria: topic type
+    function compare_topics(topic_1, topic_2) {
+        if (topic_1.type_uri != topic_2.type_uri) {
+            // 1st sort criteria: topic type
             return compare(topic_1.type_uri, topic_2.type_uri)
         } else {
-            // 3rd sort criteria: topic name
-            return compare(topic_1.value, topic_2.value)
+            // 2nd sort criteria: topic name
+            return compare(topic_1.value.toLowerCase(), topic_2.value.toLowerCase())
         }
 
         function compare(val_1, val_2) {

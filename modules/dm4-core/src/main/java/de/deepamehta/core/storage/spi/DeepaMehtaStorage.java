@@ -8,17 +8,12 @@ import de.deepamehta.core.model.SimpleValue;
 import de.deepamehta.core.model.TopicModel;
 
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
 
 
-/**
- * The MehtaGraph service. ### FIXDOC
- * It provides methods for creation and retrieval of {@link MehtaNode}s and {@link MehtaEdge}s.
- * <p>
- * To obtain a MehtaGraph service instance call {@link MehtaGraphFactory#createInstance}. ### FIXDOC
- */
 public interface DeepaMehtaStorage {
 
 
@@ -36,7 +31,11 @@ public interface DeepaMehtaStorage {
 
     List<TopicModel> queryTopics(String key, Object value);
 
+    Iterator<TopicModel> fetchAllTopics();
+
     // ---
+
+    void storeTopic(TopicModel topicModel);
 
     void storeTopicUri(long topicId, String uri);
 
@@ -47,10 +46,7 @@ public interface DeepaMehtaStorage {
      */
     void storeTopicValue(long topicId, SimpleValue value, Collection<IndexMode> indexModes, String indexKey,
                                                                                             SimpleValue indexValue);
-
     // ---
-
-    void storeTopic(TopicModel topicModel);
 
     void deleteTopic(long topicId);
 
@@ -66,7 +62,11 @@ public interface DeepaMehtaStorage {
     Set<AssociationModel> fetchAssociationsBetweenTopicAndAssociation(String assocTypeUri, long topicId, long assocId,
                                                                       String topicRoleTypeUri, String assocRoleTypeUri);
 
+    Iterator<AssociationModel> fetchAllAssociations();
+
     // ---
+
+    void storeAssociation(AssociationModel assocModel);
 
     void storeAssociationUri(long assocId, String uri);
 
@@ -81,8 +81,6 @@ public interface DeepaMehtaStorage {
     void storeRoleTypeUri(long assocId, long playerId, String roleTypeUri);
 
     // ---
-
-    void storeAssociation(AssociationModel assocModel);
 
     void deleteAssociation(long assocId);
 
@@ -160,11 +158,37 @@ public interface DeepaMehtaStorage {
 
     // === Properties ===
 
-    Object fetchProperty(long id, String key);
+    Object fetchTopicProperty(long topicId, String propUri);
 
-    void storeProperty(long id, String key, Object value);
+    Object fetchAssociationProperty(long assocId, String propUri);
 
-    boolean hasProperty(long id, String key);
+    // ---
+
+    Collection<TopicModel> fetchTopicsByProperty(String propUri, Object propValue);
+
+    Collection<TopicModel> fetchTopicsByPropertyRange(String propUri, Number from, Number to);
+
+    Collection<AssociationModel> fetchAssociationsByProperty(String propUri, Object propValue);
+
+    Collection<AssociationModel> fetchAssociationsByPropertyRange(String propUri, Number from, Number to);
+
+    // ---
+
+    void storeTopicProperty(long topicId, String propUri, Object propValue, boolean addToIndex);
+
+    void storeAssociationProperty(long assocId, String propUri, Object propValue, boolean addToIndex);
+
+    // ---
+
+    boolean hasTopicProperty(long topicId, String propUri);
+
+    boolean hasAssociationProperty(long assocId, String propUri);
+
+    // ---
+
+    void deleteTopicProperty(long topicId, String propUri);
+
+    void deleteAssociationProperty(long assocId, String propUri);
 
 
 

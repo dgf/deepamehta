@@ -1,7 +1,11 @@
 package de.deepamehta.plugins.accesscontrol;
 
+import de.deepamehta.plugins.accesscontrol.model.AccessControlList;
+import de.deepamehta.plugins.accesscontrol.model.ACLEntry;
 import de.deepamehta.plugins.accesscontrol.model.Credentials;
+import de.deepamehta.plugins.accesscontrol.model.Operation;
 import de.deepamehta.plugins.accesscontrol.model.Permissions;
+import de.deepamehta.plugins.accesscontrol.model.UserRole;
 import de.deepamehta.plugins.accesscontrol.service.AccessControlService;
 import de.deepamehta.plugins.workspaces.service.WorkspacesService;
 
@@ -20,10 +24,6 @@ import de.deepamehta.core.osgi.PluginActivator;
 import de.deepamehta.core.service.ClientState;
 import de.deepamehta.core.service.Directives;
 import de.deepamehta.core.service.PluginService;
-import de.deepamehta.core.service.accesscontrol.AccessControlList;
-import de.deepamehta.core.service.accesscontrol.ACLEntry;
-import de.deepamehta.core.service.accesscontrol.Operation;
-import de.deepamehta.core.service.accesscontrol.UserRole;
 import de.deepamehta.core.service.annotation.ConsumesService;
 import de.deepamehta.core.service.event.AllPluginsActiveListener;
 import de.deepamehta.core.service.event.IntroduceTopicTypeListener;
@@ -31,12 +31,18 @@ import de.deepamehta.core.service.event.IntroduceAssociationTypeListener;
 import de.deepamehta.core.service.event.PostCreateAssociationListener;
 import de.deepamehta.core.service.event.PostCreateTopicListener;
 import de.deepamehta.core.service.event.PostUpdateTopicListener;
-import de.deepamehta.core.service.event.PreSendAssociationListener;
 import de.deepamehta.core.service.event.PreSendAssociationTypeListener;
-import de.deepamehta.core.service.event.PreSendTopicListener;
 import de.deepamehta.core.service.event.PreSendTopicTypeListener;
+import de.deepamehta.core.service.event.ResourceRequestFilterListener;
+import de.deepamehta.core.service.event.ServiceRequestFilterListener;
+import de.deepamehta.core.storage.spi.DeepaMehtaTransaction;
 import de.deepamehta.core.util.DeepaMehtaUtils;
 import de.deepamehta.core.util.JavaUtils;
+
+import org.codehaus.jettison.json.JSONObject;
+
+// ### TODO: hide Jersey internals. Move to JAX-RS 2.0.
+import com.sun.jersey.spi.container.ContainerRequest;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -50,8 +56,13 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 
+import java.util.Collection;
+import java.util.Enumeration;
 import java.util.Set;
 import java.util.logging.Logger;
 
@@ -61,28 +72,30 @@ import java.util.logging.Logger;
 @Consumes("application/json")
 @Produces("application/json")
 public class AccessControlPlugin extends PluginActivator implements AccessControlService, AllPluginsActiveListener,
-                                                                    SecurityContext,   PostCreateTopicListener,
+                                                                                       PostCreateTopicListener,
                                                                                        PostCreateAssociationListener,
                                                                                        PostUpdateTopicListener,
                                                                                        IntroduceTopicTypeListener,
                                                                                        IntroduceAssociationTypeListener,
-                                                                                       PreSendTopicListener,
-                                                                                       PreSendAssociationListener,
+                                                                                       ServiceRequestFilterListener,
+                                                                                       ResourceRequestFilterListener,
                                                                                        PreSendTopicTypeListener,
                                                                                        PreSendAssociationTypeListener {
 
     // ------------------------------------------------------------------------------------------------------- Constants
 
-    // security settings
+    // Security settings
     private static final boolean READ_REQUIRES_LOGIN  = Boolean.getBoolean("dm4.security.read_requires_login");
     private static final boolean WRITE_REQUIRES_LOGIN = Boolean.getBoolean("dm4.security.write_requires_login");
     private static final String SUBNET_FILTER         = System.getProperty("dm4.security.subnet_filter");
 
-    // default user
+    private static final String AUTHENTICATION_REALM = "DeepaMehta";
+
+    // Default user account
     private static final String DEFAULT_USERNAME = "admin";
     private static final String DEFAULT_PASSWORD = "";
 
-    // default ACLs
+    // Default ACLs
     private static final AccessControlList DEFAULT_INSTANCE_ACL = new AccessControlList(
         new ACLEntry(Operation.WRITE,  UserRole.CREATOR, UserRole.OWNER, UserRole.MEMBER)
     );
@@ -94,6 +107,11 @@ public class AccessControlPlugin extends PluginActivator implements AccessContro
     private static final AccessControlList DEFAULT_USER_ACCOUNT_ACL = new AccessControlList(
         new ACLEntry(Operation.WRITE,  UserRole.CREATOR, UserRole.OWNER)
     );
+
+    // Property names
+    private static String URI_CREATOR = "dm4.accesscontrol.creator";
+    private static String URI_OWNER = "dm4.accesscontrol.owner";
+    private static String URI_ACL = "dm4.accesscontrol.acl";
 
     // ---------------------------------------------------------------------------------------------- Instance Variables
 
@@ -114,23 +132,34 @@ public class AccessControlPlugin extends PluginActivator implements AccessContro
 
 
 
+    // === Session ===
+
     @POST
     @Path("/login")
     @Override
     public void login() {
-        // Note: the actual login is triggered by the RequestFilter. See checkRequest() below.
+        // Note: the actual login is performed by the request filter. See requestFilter().
     }
 
     @POST
     @Path("/logout")
-    @Produces("text/plain")
     @Override
-    public boolean logout() {
-        request.getSession(false).invalidate();                 // create=false
-        return READ_REQUIRES_LOGIN;
+    public void logout() {
+        HttpSession session = request.getSession(false);        // create=false
+        logger.info("##### Logging out from " + info(session));
+        session.invalidate();
+        //
+        // For a "private" DeepaMehta installation: emulate a HTTP logout by forcing the webbrowser to bring up its
+        // login dialog and to forget the former Authorization information. The user is supposed to press "Cancel".
+        // The login dialog can't be used to login again.
+        if (READ_REQUIRES_LOGIN) {
+            throw401Unauthorized();
+        }
     }
 
-    // ---
+
+
+    // === User ===
 
     @GET
     @Path("/user")
@@ -152,51 +181,107 @@ public class AccessControlPlugin extends PluginActivator implements AccessContro
 
     @Override
     public Topic getUsername(String username) {
-        return dms.getTopic("dm4.accesscontrol.username", new SimpleValue(username), false, null);
+        return dms.getTopic("dm4.accesscontrol.username", new SimpleValue(username), false);
     }
 
-    // ---
+
+
+    // === Permissions ===
 
     @GET
-    @Path("/topic/{topic_id}")
+    @Path("/topic/{id}")
     @Override
-    public Permissions getTopicPermissions(@PathParam("topic_id") long topicId) {
-        Topic topic = dms.getTopic(topicId, false, null);
-        return createPermissions(hasPermission(getUsername(), Operation.WRITE, topic));
+    public Permissions getTopicPermissions(@PathParam("id") long topicId) {
+        return getPermissions(dms.getTopic(topicId, false));
     }
 
-    // ---
-
+    @GET
+    @Path("/association/{id}")
     @Override
-    public String getCreator(long objectId) {
-        return dms.getCreator(objectId);
+    public Permissions getAssociationPermissions(@PathParam("id") long assocId) {
+        return getPermissions(dms.getAssociation(assocId, false));
     }
 
-    @Override
-    public void setCreator(long objectId, String username) {
-        dms.setCreator(objectId, username);
-    }
 
-    // ---
+
+    // === Creator ===
 
     @Override
-    public String getOwner(long objectId) {
-        return dms.getOwner(objectId);
+    public String getCreator(DeepaMehtaObject object) {
+        return object.hasProperty(URI_CREATOR) ? (String) object.getProperty(URI_CREATOR) : null;
     }
 
     @Override
-    public void setOwner(long objectId, String username) {
-        dms.setOwner(objectId, username);
+    public void setCreator(DeepaMehtaObject object, String username) {
+        DeepaMehtaTransaction tx = dms.beginTx();
+        try {
+            object.setProperty(URI_CREATOR, username, true);    // addToIndex=true
+            tx.success();
+        } catch (Exception e) {
+            logger.warning("ROLLBACK!");
+            throw new RuntimeException("Setting the creator of object " + object.getId() + " failed", e);
+        } finally {
+            tx.finish();
+        }
     }
 
-    // ---
+
+
+    // === Owner ===
 
     @Override
-    public void setACL(long objectId, AccessControlList acl) {
-        dms.setACL(objectId, acl);
+    public String getOwner(DeepaMehtaObject object) {
+        return object.hasProperty(URI_OWNER) ? (String) object.getProperty(URI_OWNER) : null;
     }
 
-    // ---
+    @Override
+    public void setOwner(DeepaMehtaObject object, String username) {
+        DeepaMehtaTransaction tx = dms.beginTx();
+        try {
+            object.setProperty(URI_OWNER, username, true);      // addToIndex=true
+            tx.success();
+        } catch (Exception e) {
+            logger.warning("ROLLBACK!");
+            throw new RuntimeException("Setting the owner of object " + object.getId() + " failed", e);
+        } finally {
+            tx.finish();
+        }
+    }
+
+
+
+    // === Access Control List ===
+
+    @Override
+    public AccessControlList getACL(DeepaMehtaObject object) {
+        try {
+            if (object.hasProperty(URI_ACL)) {
+                return new AccessControlList(new JSONObject((String) object.getProperty(URI_ACL)));
+            } else {
+                return new AccessControlList();
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Fetching the ACL of object " + object.getId() + " failed", e);
+        }
+    }
+
+    @Override
+    public void setACL(DeepaMehtaObject object, AccessControlList acl) {
+        DeepaMehtaTransaction tx = dms.beginTx();
+        try {
+            object.setProperty(URI_ACL, acl.toJSON().toString(), false);    // addToIndex=false
+            tx.success();
+        } catch (Exception e) {
+            logger.warning("ROLLBACK!");
+            throw new RuntimeException("Setting the ACL of object " + object.getId() + " failed", e);
+        } finally {
+            tx.finish();
+        }
+    }
+
+
+
+    // === Workspaces ===
 
     @POST
     @Path("/user/{username}/workspace/{workspace_id}")
@@ -216,138 +301,34 @@ public class AccessControlPlugin extends PluginActivator implements AccessContro
 
 
 
-    // **************************************
-    // *** SecurityContext Implementation ***
-    // **************************************
+    // === Retrieval ===
 
-
-
-    /**
-     * Called from {@link RequestFilter#doFilter}.
-     */
+    @GET
+    @Path("/creator/{username}/topics")
     @Override
-    public void checkRequest(HttpServletRequest request) throws AccessControlException {
-        logger.fine("##### " + request.getMethod() + " " + request.getRequestURL() +
-            "\n      ##### \"Authorization\"=\"" + request.getHeader("Authorization") + "\"" +
-            "\n      ##### " + info(request.getSession(false)));    // create=false
-        //
-        checkRequestOrigin(request);
-        checkAuthorization(request);
+    public Collection<Topic> getTopicsByCreator(@PathParam("username") String username) {
+        return dms.getTopicsByProperty(URI_CREATOR, username);
     }
 
-    // ---
-
-    private void checkRequestOrigin(HttpServletRequest request) throws AccessControlException {
-        String remoteAddr = request.getRemoteAddr();
-        boolean isInRange = JavaUtils.isInRange(remoteAddr, SUBNET_FILTER);
-        //
-        logger.fine("Remote address=\"" + remoteAddr + "\", dm4.security.subnet_filter=\"" + SUBNET_FILTER +
-            "\" => " + (isInRange ? "ALLOWED" : "FORBIDDEN"));
-        //
-        if (!isInRange) {
-            throw new AccessControlException("Request from \"" + remoteAddr + "\" is not allowed " +
-                "(dm4.security.subnet_filter=\"" + SUBNET_FILTER + "\")", HttpServletResponse.SC_FORBIDDEN);
-        }
+    @GET
+    @Path("/owner/{username}/topics")
+    @Override
+    public Collection<Topic> getTopicsByOwner(@PathParam("username") String username) {
+        return dms.getTopicsByProperty(URI_OWNER, username);
     }
 
-    private void checkAuthorization(HttpServletRequest request) throws AccessControlException {
-        boolean authorized = false;
-        if (isLoginRequired(request)) {
-            HttpSession session = request.getSession(false);    // create=false
-            if (session != null) {
-                authorized = true;
-            } else {
-                String authHeader = request.getHeader("Authorization");
-                if (authHeader != null) {
-                    authorized = login(new Credentials(authHeader), request);
-                }
-            }
-        } else {
-            authorized = true;
-        }
-        //
-        if (!authorized) {
-            throw new AccessControlException("Request " + request + " is not authorized",
-                HttpServletResponse.SC_UNAUTHORIZED);
-        }
+    @GET
+    @Path("/creator/{username}/assocs")
+    @Override
+    public Collection<Association> getAssociationsByCreator(@PathParam("username") String username) {
+        return dms.getAssociationsByProperty(URI_CREATOR, username);
     }
 
-    // ---
-
-    private boolean isLoginRequired(HttpServletRequest request) {
-        return request.getMethod().equals("GET") ? READ_REQUIRES_LOGIN : WRITE_REQUIRES_LOGIN;
-    }
-
-    /**
-     * Checks weather the credentials match an User Account.
-     *
-     * @return  <code>true</code> if the credentials match an User Account.
-     */
-    private boolean login(Credentials cred, HttpServletRequest request) {
-        if (checkCredentials(cred)) {
-            HttpSession session = createSession(cred.username, request);
-            logger.info("##### Logging in as \"" + cred.username + "\" => SUCCESSFUL!" +
-                "\n      ##### Creating new " + info(session));
-            return true;
-        } else {
-            logger.info("##### Logging in as \"" + cred.username + "\" => FAILED!");
-            return false;
-        }
-    }
-
-    private boolean checkCredentials(Credentials cred) {
-        Topic username = getUsername(cred.username);
-        if (username == null) {
-            return false;
-        }
-        return matches(username, cred.password);
-    }
-
-    private HttpSession createSession(String username, HttpServletRequest request) {
-        HttpSession session = request.getSession();
-        session.setAttribute("username", username);
-        return session;
-    }
-
-    // ---
-
-    /**
-     * Prerequisite: username is not <code>null</code>.
-     *
-     * @param   password    The encrypted password.
-     */
-    private boolean matches(Topic username, String password) {
-        return password(fetchUserAccount(username)).equals(password);
-    }
-
-    /**
-     * Prerequisite: username is not <code>null</code>.
-     */
-    private Topic fetchUserAccount(Topic username) {
-        Topic userAccount = username.getRelatedTopic("dm4.core.composition", "dm4.core.child", "dm4.core.parent",
-            "dm4.accesscontrol.user_account", true, false, null);  // fetchComposite=true, fetchRelatingComposite=false
-        if (userAccount == null) {
-            throw new RuntimeException("Data inconsistency: there is no User Account topic for username \"" +
-                username.getSimpleValue() + "\" (username=" + username + ")");
-        }
-        return userAccount;
-    }
-
-    // ---
-
-    private String username(HttpSession session) {
-        String username = (String) session.getAttribute("username");
-        if (username == null) {
-            throw new RuntimeException("Session data inconsistency: \"username\" attribute is missing");
-        }
-        return username;
-    }
-
-    /**
-     * @return  The encryted password of the specified User Account.
-     */
-    private String password(Topic userAccount) {
-        return userAccount.getCompositeValue().getString("dm4.accesscontrol.password");
+    @GET
+    @Path("/owner/{username}/assocs")
+    @Override
+    public Collection<Association> getAssociationsByOwner(@PathParam("username") String username) {
+        return dms.getAssociationsByProperty(URI_OWNER, username);
     }
 
 
@@ -373,16 +354,10 @@ public class AccessControlPlugin extends PluginActivator implements AccessContro
 
     @Override
     public void init() {
-        try {
-            logger.info("Security settings:" +
-                "\n    dm4.security.read_requires_login=" + READ_REQUIRES_LOGIN +
-                "\n    dm4.security.write_requires_login=" + WRITE_REQUIRES_LOGIN +
-                "\n    dm4.security.subnet_filter=\""+ SUBNET_FILTER + "\"");
-            //
-            registerFilter(new RequestFilter(this));
-        } catch (Exception e) {
-            throw new RuntimeException("Registering the request filter failed", e);
-        }
+        logger.info("Security settings:" +
+            "\n    dm4.security.read_requires_login=" + READ_REQUIRES_LOGIN +
+            "\n    dm4.security.write_requires_login=" + WRITE_REQUIRES_LOGIN +
+            "\n    dm4.security.subnet_filter=\""+ SUBNET_FILTER + "\"");
     }
 
     // ---
@@ -470,9 +445,9 @@ public class AccessControlPlugin extends PluginActivator implements AccessContro
                     "    - User Account topic (ID " + topic.getId() + ")\n" + 
                     "    - Username topic (ID " + usernameTopic.getId() + ")\n" + 
                     "    - Password topic (ID " + passwordTopic.getId() + ")");
-                setOwner(topic.getId(), newUsername);
-                setOwner(usernameTopic.getId(), newUsername);
-                setOwner(passwordTopic.getId(), newUsername);
+                setOwner(topic, newUsername);
+                setOwner(usernameTopic, newUsername);
+                setOwner(passwordTopic, newUsername);
             }
         }
     }
@@ -492,30 +467,37 @@ public class AccessControlPlugin extends PluginActivator implements AccessContro
     // ---
 
     @Override
-    public void preSendTopic(Topic topic, ClientState clientState) {
-        enrichWithPermissions(topic, clientState);
+    public void serviceRequestFilter(ContainerRequest containerRequest) {
+        // Note: we pass the injected HttpServletRequest
+        requestFilter(request);
     }
 
     @Override
-    public void preSendAssociation(Association assoc, ClientState clientState) {
-        enrichWithPermissions(assoc, clientState);
+    public void resourceRequestFilter(HttpServletRequest servletRequest) {
+        // Note: for the resource filter no HttpServletRequest is injected
+        requestFilter(servletRequest);
     }
+
+    // ---
+
+    // ### TODO: make the types cachable (like topics/associations). That is, don't deliver the permissions along
+    // with the types (don't use the preSend{}Type hooks). Instead let the client request the permissions separately.
 
     @Override
     public void preSendTopicType(TopicType topicType, ClientState clientState) {
         // Note: the permissions for "Meta Meta Type" must be set manually.
         // This type doesn't exist in DB. Fetching its ACL entries would fail.
         if (topicType.getUri().equals("dm4.core.meta_meta_type")) {
-            enrichWithPermissions(topicType, false, false);     // write=false, create=false
+            enrichWithPermissions(topicType, createPermissions(false, false));  // write=false, create=false
             return;
         }
         //
-        enrichWithPermissions(topicType, clientState);
+        enrichWithPermissions(topicType, getPermissions(topicType));
     }
 
     @Override
     public void preSendAssociationType(AssociationType assocType, ClientState clientState) {
-        enrichWithPermissions(assocType, clientState);
+        enrichWithPermissions(assocType, getPermissions(assocType));
     }
 
 
@@ -593,7 +575,7 @@ public class AccessControlPlugin extends PluginActivator implements AccessContro
         try {
             // Note: we only check for creator assignment.
             // If an object has a creator assignment it is expected to have an ACL entry as well.
-            if (getCreator(defaultTopicmap.getId()) != null) {
+            if (getCreator(defaultTopicmap) != null) {
                 logger.info(operation + " ABORTED -- already setup");
                 return;
             }
@@ -612,12 +594,157 @@ public class AccessControlPlugin extends PluginActivator implements AccessContro
         // topicmap. ### TODO: make "optional plugin dependencies" an explicit concept. Plugins must be able to ask
         // the core weather a certain plugin is installed (regardles weather it is activated already) and would wait
         // for its service only if installed.
-        return dms.getTopic("uri", new SimpleValue("dm4.topicmaps.default_topicmap"), false, null);
+        return dms.getTopic("uri", new SimpleValue("dm4.topicmaps.default_topicmap"), false);
     }
 
 
 
-    // === ACL Entries ===
+    // === Request Filter ===
+
+    private void requestFilter(HttpServletRequest request) {
+        logger.fine("##### " + request.getMethod() + " " + request.getRequestURL() +
+            "\n      ##### \"Authorization\"=\"" + request.getHeader("Authorization") + "\"" +
+            "\n      ##### " + info(request.getSession(false)));    // create=false
+        //
+        checkRequestOrigin(request);    // throws WebApplicationException
+        checkAuthorization(request);    // throws WebApplicationException
+    }
+
+    // ---
+
+    private void checkRequestOrigin(HttpServletRequest request) {
+        String remoteAddr = request.getRemoteAddr();
+        boolean allowed = JavaUtils.isInRange(remoteAddr, SUBNET_FILTER);
+        //
+        logger.fine("Remote address=\"" + remoteAddr + "\", dm4.security.subnet_filter=\"" + SUBNET_FILTER +
+            "\" => " + (allowed ? "ALLOWED" : "FORBIDDEN"));
+        //
+        if (!allowed) {
+            throw403Forbidden();    // throws WebApplicationException
+        }
+    }
+
+    private void checkAuthorization(HttpServletRequest request) {
+        boolean authorized;
+        if (request.getSession(false) != null) {    // create=false
+            authorized = true;
+        } else {
+            String authHeader = request.getHeader("Authorization");
+            if (authHeader != null) {
+                // Note: if login fails we are NOT authorized, even if no login is required
+                authorized = tryLogin(new Credentials(authHeader), request);
+            } else {
+                authorized = !isLoginRequired(request);
+            }
+        }
+        //
+        if (!authorized) {
+            throw401Unauthorized(); // throws WebApplicationException
+        }
+    }
+
+    // ---
+
+    private boolean isLoginRequired(HttpServletRequest request) {
+        return request.getMethod().equals("GET") ? READ_REQUIRES_LOGIN : WRITE_REQUIRES_LOGIN;
+    }
+
+    /**
+     * Checks weather the credentials are valid and if so creates a session.
+     *
+     * @return  true if the credentials are valid.
+     */
+    private boolean tryLogin(Credentials cred, HttpServletRequest request) {
+        if (checkCredentials(cred)) {
+            HttpSession session = createSession(cred.username, request);
+            logger.info("##### Logging in as \"" + cred.username + "\" => SUCCESSFUL!" +
+                "\n      ##### Creating new " + info(session));
+            return true;
+        } else {
+            logger.info("##### Logging in as \"" + cred.username + "\" => FAILED!");
+            return false;
+        }
+    }
+
+    private boolean checkCredentials(Credentials cred) {
+        Topic username = getUsername(cred.username);
+        if (username == null) {
+            return false;
+        }
+        return matches(username, cred.password);
+    }
+
+    private HttpSession createSession(String username, HttpServletRequest request) {
+        HttpSession session = request.getSession();
+        session.setAttribute("username", username);
+        return session;
+    }
+
+    // ---
+
+    /**
+     * Prerequisite: username is not <code>null</code>.
+     *
+     * @param   password    The encrypted password.
+     */
+    private boolean matches(Topic username, String password) {
+        return password(fetchUserAccount(username)).equals(password);
+    }
+
+    /**
+     * Prerequisite: username is not <code>null</code>.
+     */
+    private Topic fetchUserAccount(Topic username) {
+        Topic userAccount = username.getRelatedTopic("dm4.core.composition", "dm4.core.child", "dm4.core.parent",
+            "dm4.accesscontrol.user_account", true, false);     // fetchComposite=true, fetchRelatingComposite=false
+        if (userAccount == null) {
+            throw new RuntimeException("Data inconsistency: there is no User Account topic for username \"" +
+                username.getSimpleValue() + "\" (username=" + username + ")");
+        }
+        return userAccount;
+    }
+
+    // ---
+
+    private String username(HttpSession session) {
+        String username = (String) session.getAttribute("username");
+        if (username == null) {
+            throw new RuntimeException("Session data inconsistency: \"username\" attribute is missing");
+        }
+        return username;
+    }
+
+    /**
+     * @return  The encryted password of the specified User Account.
+     */
+    private String password(Topic userAccount) {
+        return userAccount.getCompositeValue().getString("dm4.accesscontrol.password");
+    }
+
+    // ---
+
+    private void throw401Unauthorized() {
+        // Note: a non-private DM installation (read_requires_login=false) utilizes DM's login dialog and must suppress
+        // the browser's login dialog. To suppress the browser's login dialog a contrived authentication scheme "xBasic"
+        // is used (see http://loudvchar.blogspot.ca/2010/11/avoiding-browser-popup-for-401.html)
+        String authScheme = READ_REQUIRES_LOGIN ? "Basic" : "xBasic";
+        throw new WebApplicationException(Response.status(Status.UNAUTHORIZED)
+            .header("WWW-Authenticate", authScheme + " realm=" + AUTHENTICATION_REALM)
+            .header("Content-Type", "text/html")    // for text/plain (default) Safari provides no Web Console
+            .entity("You're not authorized. Sorry.")
+            .build());
+    }
+
+    private void throw403Forbidden() {
+        throw new WebApplicationException(Response.status(Status.FORBIDDEN)
+            .header("Content-Type", "text/html")    // for text/plain (default) Safari provides no Web Console
+            .entity("Access is forbidden. Sorry.")
+            .build());
+    }
+
+
+
+    // === Create ACL Entries ===
 
     /**
      * Sets the logged in user as the creator and the owner of the specified object
@@ -675,10 +802,23 @@ public class AccessControlPlugin extends PluginActivator implements AccessContro
     // ---
 
     private void setupAccessControl(DeepaMehtaObject object, AccessControlList acl, String username) {
-        long objectId = object.getId();
-        setCreator(objectId, username);
-        setOwner(objectId, username);
-        setACL(objectId, acl);
+        setCreator(object, username);
+        setOwner(object, username);
+        setACL(object, acl);
+    }
+
+
+
+    // === Determine Permissions ===
+
+    private Permissions getPermissions(DeepaMehtaObject object) {
+        return createPermissions(hasPermission(getUsername(), Operation.WRITE, object));
+    }
+
+    private Permissions getPermissions(Type type) {
+        String username = getUsername();
+        return createPermissions(hasPermission(username, Operation.WRITE, type),
+                                 hasPermission(username, Operation.CREATE, type));
     }
 
     // ---
@@ -693,7 +833,7 @@ public class AccessControlPlugin extends PluginActivator implements AccessContro
     private boolean hasPermission(String username, Operation operation, DeepaMehtaObject object) {
         try {
             logger.fine("Determining permission for " + userInfo(username) + " to " + operation + " " + info(object));
-            UserRole[] userRoles = dms.getACL(object.getId()).getUserRoles(operation);
+            UserRole[] userRoles = getACL(object).getUserRoles(operation);
             for (UserRole userRole : userRoles) {
                 logger.fine("There is an ACL entry for user role " + userRole);
                 if (userOccupiesRole(username, userRole, object)) {
@@ -768,7 +908,7 @@ public class AccessControlPlugin extends PluginActivator implements AccessContro
      * @param   username    a Topic of type "Username" (<code>dm4.accesscontrol.username</code>). ### FIXDOC
      */
     private boolean userIsOwner(String username, DeepaMehtaObject object) {
-        String owner = getOwner(object.getId());
+        String owner = getOwner(object);
         logger.fine("The owner is " + userInfo(owner));
         return owner != null && owner.equals(username);
     }
@@ -782,43 +922,20 @@ public class AccessControlPlugin extends PluginActivator implements AccessContro
      * @param   username    a Topic of type "Username" (<code>dm4.accesscontrol.username</code>). ### FIXDOC
      */
     private boolean userIsCreator(String username, DeepaMehtaObject object) {
-        String creator = getCreator(object.getId());
+        String creator = getCreator(object);
         logger.fine("The creator is " + userInfo(creator));
         return creator != null && creator.equals(username);
     }
 
     // ---
 
-    public void enrichWithPermissions(DeepaMehtaObject object, ClientState clientState) {
-        logger.fine("### Enriching " + info(object) + " with its permissions (clientState=" + clientState + ")");
-        enrichWithPermissions(object, hasPermission(getUsername(), Operation.WRITE, object));
-    }
-
-    public void enrichWithPermissions(Type type, ClientState clientState) {
-        logger.fine("### Enriching type \"" + type.getUri() + "\" with its permissions");
-        String username = getUsername();
-        enrichWithPermissions(type, hasPermission(username, Operation.WRITE, type),
-                                    hasPermission(username, Operation.CREATE, type));
-    }
-    
-    // ---
-
-    private void enrichWithPermissions(DeepaMehtaObject object, boolean write) {
+    private void enrichWithPermissions(Type type, Permissions permissions) {
         // Note: we must extend/override possibly existing permissions.
         // Consider a type update: directive UPDATE_TOPIC_TYPE is followed by UPDATE_TOPIC, both on the same object.
-        CompositeValueModel permissions = permissions(object);
-        permissions.put(Operation.WRITE.uri, write);
+        CompositeValueModel typePermissions = permissions(type);
+        typePermissions.put(Operation.WRITE.uri, permissions.get(Operation.WRITE.uri));
+        typePermissions.put(Operation.CREATE.uri, permissions.get(Operation.CREATE.uri));
     }
-
-    private void enrichWithPermissions(Type type, boolean write, boolean create) {
-        // Note: we must extend/override possibly existing permissions.
-        // Consider a type update: directive UPDATE_TOPIC_TYPE is followed by UPDATE_TOPIC, both on the same object.
-        CompositeValueModel permissions = permissions(type);
-        permissions.put(Operation.WRITE.uri, write);
-        permissions.put(Operation.CREATE.uri, create);
-    }
-
-    // ---
 
     private CompositeValueModel permissions(DeepaMehtaObject object) {
         // Note 1: "dm4.accesscontrol.permissions" is a contrived URI. There is no such type definition.
@@ -877,5 +994,21 @@ public class AccessControlPlugin extends PluginActivator implements AccessContro
     private String info(HttpSession session) {
         return "session" + (session != null ? " " + session.getId() +
             " (username=" + username(session) + ")" : ": null");
+    }
+
+    private String info(HttpServletRequest request) {
+        StringBuilder info = new StringBuilder();
+        info.append("    " + request.getMethod() + " " + request.getRequestURI() + "\n");
+        Enumeration<String> e1 = request.getHeaderNames();
+        while (e1.hasMoreElements()) {
+            String name = e1.nextElement();
+            info.append("\n    " + name + ":");
+            Enumeration<String> e2 = request.getHeaders(name);
+            while (e2.hasMoreElements()) {
+                String header = e2.nextElement();
+                info.append(" " + header);
+            }
+        }
+        return info.toString();
     }
 }

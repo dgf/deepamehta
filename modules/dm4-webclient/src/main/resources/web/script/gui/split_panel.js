@@ -3,7 +3,7 @@ function SplitPanel() {
     var PADDING_MIDDLE = 25     // 25px = 1.6em = 1.6 * 16px = 25(.6)
     var PADDING_BOTTOM = 60     // was 60px, then 67 (healing login dialog), then 76 (healing datepicker)
 
-    var left_panel_parent  = $("<td>").append($("<div>", {id: "canvas-panel"}))
+    var left_panel_parent  = $("<td>").append($("<div>", {id: "topicmap-panel"}))
     var right_panel_parent = $("<td>")
 
     var left_panel
@@ -28,14 +28,15 @@ function SplitPanel() {
         left_panel = panel
         //
         // 1) add panel to page (by replacing the existing one)
-        $("#canvas").remove()
-        $("#canvas-panel").append(panel.dom)
+        // Note: class "topicmap-renderer" is added in order to address the panel for removal.
+        $("#topicmap-panel .topicmap-renderer").remove()
+        $("#topicmap-panel").append(panel.dom.addClass("topicmap-renderer"))
         // Note: re-added panels must be resized to adapt to possibly changed slider position.
         resize_left_panel()
         // Note: resizing takes place *after* replacing. This allows panels to recreate their DOM
         // to realize resizing. Otherwise the panel's event handlers would be lost while replacing.
-        if (dm4c.LOG_GUI) dm4c.log("Setting left panel, dom.width()=" + panel.dom.width() +
-            ", left_panel_width=" + left_panel_width)
+        //
+        // "Setting left panel, dom.width()=" + panel.dom.width() + ", left_panel_width=" + left_panel_width
         //
         // 2) init panel
         var panel_uri = panel.get_info().uri
@@ -55,10 +56,10 @@ function SplitPanel() {
         //
         adjust_right_panel_height()
         right_panel.width = panel.dom.width()
-        if (dm4c.LOG_GUI) dm4c.log("Page panel width=" + right_panel.width)
+        // "Page panel width=" + right_panel.width
         //
         calculate_left_panel_width()
-        $("#canvas-panel").resizable({handles: "e", resize: do_resize, stop: do_stop_resize})
+        $("#topicmap-panel").resizable({handles: "e", resize: do_resize, stop: do_stop_resize})
         //
         $(window).resize(do_window_resize)
     }
@@ -113,8 +114,8 @@ function SplitPanel() {
         // update model
         var w_w = window.innerWidth
         left_panel_width  = w_w - right_panel.width - PADDING_MIDDLE
-        if (dm4c.LOG_GUI) dm4c.log("Canvas width=" + left_panel_width + " (based on window width " + w_w +
-            " and page panel width " + right_panel.width + ")")
+        // "Canvas width=" + left_panel_width + " (based on window width " + w_w +
+        // " and page panel width " + right_panel.width + ")"
     }
 
     function get_left_panel_size() {
@@ -156,8 +157,7 @@ function SplitPanel() {
             var w_h = window.innerHeight
             var t_h = dm4c.toolbar.dom.height()
             panel_height = w_h - t_h - PADDING_BOTTOM
-            if (dm4c.LOG_GUI) dm4c.log("Panel height=" + panel_height + " (based on window height " + w_h +
-                " and toolbar height " + t_h + ")")
+            // "Panel height=" + panel_height + " (based on window height " + w_h + " and toolbar height " + t_h + ")"
         }
     }
 
@@ -169,8 +169,7 @@ function SplitPanel() {
      * Triggered repeatedly while the user moves the split pane's resizable-handle.
      */
     function do_resize(event, ui_event) {
-        if (dm4c.LOG_GUI) dm4c.log("Canvas resized: original with=" + ui_event.originalSize.width +
-                                                   " current with=" + ui_event.size.width)
+        // Canvas resized: original with=" + ui_event.originalSize.width + " current with=" + ui_event.size.width
         set_slider_position(ui_event.size.width)
     }
 
@@ -178,10 +177,11 @@ function SplitPanel() {
      * Triggered while the user releases the split pane's resizable-handle.
      */
     function do_stop_resize() {
-        // While resizing-via-handle jQuery UI adds a "style" attribute with absolute size values to the canvas-panel.
+        // While resizing-via-handle jQuery UI adds a "style" attribute with absolute size values to the topicmap-panel.
         // This stops its flexible sizing (that follows the canvas element's size) and breaks the layout once the main
         // window is resized. Removing that style attribute once resizing-via-handle is finished solves that problem.
-        $("#canvas-panel").removeAttr("style")
+        $("#topicmap-panel").removeAttr("style")
+        //
         left_panel.resize_end()
     }
 

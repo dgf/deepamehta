@@ -20,7 +20,7 @@ dm4c.add_plugin("de.deepamehta.files", function() {
     //
     dm4c.restc.get_file = function(path) {
         // ### FIXME: principle copy in File Content Renderers's filerepo_URI()
-        return this.request("GET", "/filerepo/" + encodeURI(path), undefined, undefined, "text")
+        return this.request("GET", "/filerepo/" + encodeURI(path), undefined, undefined, undefined, "text")
         // Note: response_data_type="text" causes the response data to be returned as is
         // (instead of trying to JSON-parse it). It works for non-text files as well.
     }
@@ -128,7 +128,7 @@ dm4c.add_plugin("de.deepamehta.files", function() {
     })
 
     /**
-     * @param   topic   a CanvasTopic object
+     * @param   topic   a TopicView object
      */
     dm4c.add_listener("topic_doubleclicked", function(topic) {
         if (topic.type_uri == "dm4.files.file" ||

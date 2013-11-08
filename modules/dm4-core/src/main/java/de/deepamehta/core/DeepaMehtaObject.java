@@ -82,10 +82,9 @@ public interface DeepaMehtaObject extends Identifiable, JSONEnabled {
      * @param   othersTopicTypeUri  may be null
      */
     RelatedTopic getRelatedTopic(String assocTypeUri, String myRoleTypeUri, String othersRoleTypeUri,
-                                 String othersTopicTypeUri, boolean fetchComposite, boolean fetchRelatingComposite,
-                                 ClientState clientState);
+                                 String othersTopicTypeUri, boolean fetchComposite, boolean fetchRelatingComposite);
 
-    ResultSet<RelatedTopic> getRelatedTopics(String assocTypeUri, int maxResultSize, ClientState clientState);
+    ResultSet<RelatedTopic> getRelatedTopics(String assocTypeUri, int maxResultSize);
 
     /**
      * @param   assocTypeUri        may be null
@@ -98,7 +97,7 @@ public interface DeepaMehtaObject extends Identifiable, JSONEnabled {
      */
     ResultSet<RelatedTopic> getRelatedTopics(String assocTypeUri, String myRoleTypeUri, String othersRoleTypeUri,
                                     String othersTopicTypeUri, boolean fetchComposite, boolean fetchRelatingComposite,
-                                    int maxResultSize, ClientState clientState);
+                                    int maxResultSize);
 
     /**
      * @param   assocTypeUris       may *not* be null
@@ -108,7 +107,7 @@ public interface DeepaMehtaObject extends Identifiable, JSONEnabled {
      */
     ResultSet<RelatedTopic> getRelatedTopics(List assocTypeUris, String myRoleTypeUri, String othersRoleTypeUri,
                                     String othersTopicTypeUri, boolean fetchComposite, boolean fetchRelatingComposite,
-                                    int maxResultSize, ClientState clientState);
+                                    int maxResultSize);
 
      // --- Association Retrieval ---
 
@@ -128,4 +127,16 @@ public interface DeepaMehtaObject extends Identifiable, JSONEnabled {
      * - all the remaining direct associations, e.g. "dm4.core.instantiation"
      */
     void delete(Directives directives);
+
+
+
+    // === Properties ===
+
+    Object getProperty(String propUri);
+
+    void setProperty(String propUri, Object propValue, boolean addToIndex);
+
+    boolean hasProperty(String propUri);
+
+    void removeProperty(String propUri);
 }

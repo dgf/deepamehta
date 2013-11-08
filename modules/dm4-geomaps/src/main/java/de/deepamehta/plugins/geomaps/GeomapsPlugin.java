@@ -34,7 +34,6 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.Consumes;
-import javax.ws.rs.WebApplicationException;
 
 import java.net.URL;
 import java.util.List;
@@ -79,18 +78,17 @@ public class GeomapsPlugin extends PluginActivator implements GeomapsService, Po
     @GET
     @Path("/topic/{id}")
     @Override
-    public Topic getGeoTopic(@PathParam("id") long topicId, @HeaderParam("Cookie") ClientState clientState) {
+    public Topic getGeoTopic(@PathParam("id") long topicId) {
         try {
-            Topic topic = dms.getTopic(topicId, true, clientState);
+            Topic topic = dms.getTopic(topicId, true);
             RelatedTopic parentTopic;
             while ((parentTopic = topic.getRelatedTopic(null, "dm4.core.child", "dm4.core.parent", null,
-                    true, false, clientState)) != null) {
+                    true, false)) != null) {
                 topic = parentTopic;
             }
             return topic;
         } catch (Exception e) {
-            throw new WebApplicationException(new RuntimeException("Finding the geo coordinate's parent topic failed " +
-                "(topicId=" + topicId + ")", e));
+            throw new RuntimeException("Finding the geo coordinate's parent topic failed (topicId=" + topicId + ")", e);
         }
     }
 
@@ -273,7 +271,7 @@ public class GeomapsPlugin extends PluginActivator implements GeomapsService, Po
         }
         //
         CompositeValueModel comp = topic.getCompositeValueModel();
-        TopicType topicType = dms.getTopicType(typeUri, null);      // clientState=null
+        TopicType topicType = dms.getTopicType(typeUri);
         for (AssociationDefinition assocDef : topicType.getAssocDefs()) {
             String childTypeUri   = assocDef.getChildTypeUri();
             String cardinalityUri = assocDef.getChildCardinalityUri();

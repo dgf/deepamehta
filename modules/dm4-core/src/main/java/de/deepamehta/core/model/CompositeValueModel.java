@@ -78,7 +78,7 @@ public class CompositeValueModel {
      * Throws if there is no such child.
      */
     public TopicModel getTopic(String childTypeUri) {
-        TopicModel topic = (TopicModel) values.get(childTypeUri);
+        TopicModel topic = (TopicModel) get(childTypeUri);
         // error check
         if (topic == null) {
             throw new RuntimeException("Invalid access to CompositeValueModel entry \"" + childTypeUri +
@@ -93,7 +93,7 @@ public class CompositeValueModel {
      * Returns a default value if there is no such child.
      */
     public TopicModel getTopic(String childTypeUri, TopicModel defaultValue) {
-        TopicModel topic = (TopicModel) values.get(childTypeUri);
+        TopicModel topic = (TopicModel) get(childTypeUri);
         return topic != null ? topic : defaultValue;
     }
 
@@ -105,7 +105,7 @@ public class CompositeValueModel {
      */
     public List<TopicModel> getTopics(String childTypeUri) {
         try {
-            List<TopicModel> topics = (List<TopicModel>) values.get(childTypeUri);
+            List<TopicModel> topics = (List<TopicModel>) get(childTypeUri);
             // error check
             if (topics == null) {
                 throw new RuntimeException("Invalid access to CompositeValueModel entry \"" + childTypeUri +
@@ -125,7 +125,7 @@ public class CompositeValueModel {
      */
     public List<TopicModel> getTopics(String childTypeUri, List<TopicModel> defaultValue) {
         try {
-            List<TopicModel> topics = (List<TopicModel>) values.get(childTypeUri);
+            List<TopicModel> topics = (List<TopicModel>) get(childTypeUri);
             return topics != null ? topics : defaultValue;
         } catch (ClassCastException e) {
             throwInvalidAccess(childTypeUri, e);
@@ -135,18 +135,36 @@ public class CompositeValueModel {
 
     // ---
 
+    /**
+     * Accesses a child generically, regardless of single-valued or multiple-valued.
+     * Returns null if there is no such child.
+     *
+     * @return  A TopicModel or List<TopicModel>, or null if there is no such child.
+     */
     public Object get(String childTypeUri) {
         return values.get(childTypeUri);
     }
 
+    /**
+     * Returns the type URIs of all childs directly contained in this composite value.
+     * ### TODO: could be renamed to "getChildTypeURIs()"
+     */
     public Iterable<String> keys() {
         return values.keySet();
     }
 
+    /**
+     * Checks if a child is directly contained in this composite value.
+     * ### TODO: could be renamed to "contains()"
+     */
     public boolean has(String childTypeUri) {
         return values.containsKey(childTypeUri);
     }
 
+    /**
+     * Returns the number of childs directly contained in this composite value.
+     * Multiple-valued childs count as one.
+     */
     public int size() {
         return values.size();
     }
@@ -293,7 +311,8 @@ public class CompositeValueModel {
     // === Manipulators ===
 
     /**
-     * Puts a single-valued child. An existing value is overwritten.
+     * Puts a value in a single-valued child.
+     * An existing value is overwritten.
      */
     public CompositeValueModel put(String childTypeUri, TopicModel value) {
         try {
@@ -311,7 +330,8 @@ public class CompositeValueModel {
     }
 
     /**
-     * Convenience method to put a single-valued child. An existing value is overwritten.
+     * Convenience method to put a *simple* value in a single-valued child.
+     * An existing value is overwritten.
      *
      * @param   value   a String, Integer, Long, Double, or a Boolean.
      *
@@ -328,7 +348,8 @@ public class CompositeValueModel {
     }
 
     /**
-     * Convenience method to put a single-valued child. An existing value is overwritten.
+     * Convenience method to put a *composite* value in a single-valued child.
+     * An existing value is overwritten.
      *
      * @return  this CompositeValueModel.
      */
@@ -340,7 +361,8 @@ public class CompositeValueModel {
     // ---
 
     /**
-     * Puts a by-ID topic reference for a single-valued child. An existing reference is overwritten.
+     * Puts a by-ID topic reference for a single-valued child.
+     * An existing reference is overwritten.
      *
      * Used to maintain the assigment of an *aggregated* child.
      * Not applicable for a *compositioned* child.
@@ -351,7 +373,8 @@ public class CompositeValueModel {
     }
 
     /**
-     * Puts a by-URI topic reference for a single-valued child. An existing reference is overwritten.
+     * Puts a by-URI topic reference for a single-valued child.
+     * An existing reference is overwritten.
      *
      * Used to maintain the assigment of an *aggregated* child.
      * Not applicable for a *compositioned* child.
@@ -430,7 +453,7 @@ public class CompositeValueModel {
         try {
             JSONObject json = new JSONObject();
             for (String childTypeUri : keys()) {
-                Object value = values.get(childTypeUri);
+                Object value = get(childTypeUri);
                 if (value instanceof TopicModel) {
                     json.put(childTypeUri, ((TopicModel) value).toJSON());
                 } else if (value instanceof List) {
@@ -457,7 +480,7 @@ public class CompositeValueModel {
     public CompositeValueModel clone() {
         CompositeValueModel clone = new CompositeValueModel();
         for (String childTypeUri : keys()) {
-            Object value = values.get(childTypeUri);
+            Object value = get(childTypeUri);
             if (value instanceof TopicModel) {
                 TopicModel model = (TopicModel) value;
                 clone.put(childTypeUri, model.clone());
@@ -492,6 +515,8 @@ public class CompositeValueModel {
         if (value instanceof JSONObject) {
             JSONObject val = (JSONObject) value;
             // we detect the canonic format by checking for a mandatory topic property
+            // ### TODO: "type_uri" should not be regarded mandatory. It would simplify update requests.
+            // ### Can we use another heuristic for detection: "value" exists OR "composite" exists?
             if (val.has("type_uri")) {
                 // canonic format
                 return new TopicModel(val);

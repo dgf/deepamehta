@@ -10,7 +10,7 @@ dm4c.add_plugin("de.deepamehta.help", function() {
                     '<div class="field-label">Version</div>' +
                     '<div>${project.version}</div>' +
                     '<div class="field-label">Release Date</div>' +
-                    '<div>Mar 11, 2013</div>' +
+                    '<div>Oct 29, 2013</div>' +
                     '<div class="field-label">Copyright</div>' +
                     '<div>2000-2013 Jörg Richter et al.</div>' +
                     '<div class="field-label">License</div>' +
@@ -26,6 +26,7 @@ dm4c.add_plugin("de.deepamehta.help", function() {
                         'Martin Delius<br>' +
                         'Andreas Gebhard<br>' +
                         'Danny Gräf<br>' +
+                        'Malte Kiesel<br>' +
                         'Rolf Kutz<br>' +
                         'Annette Leeb<br>' +
                         'Urs Lerch<br>' +
@@ -33,12 +34,12 @@ dm4c.add_plugin("de.deepamehta.help", function() {
                         'Silke Meyer<br>' +
                         'Christiane Müller<br>' +
                         'Jürgen Neumann<br>' +
-                        'Jurij Poelchau<br>' +
                     '</div>' +
                 '</td>' +
                 '<td>' +
                     '<div class="field-label" style="visibility: hidden">Contributors</div>' +
                     '<div class="contributors">' +
+                        'Jurij Poelchau<br>' +
                         'Ingo Rau<br>' +
                         'Malte Reißig<br>' +
                         'Jörg Richter<br>' +

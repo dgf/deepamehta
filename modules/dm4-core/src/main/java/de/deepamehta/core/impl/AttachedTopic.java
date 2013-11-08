@@ -116,7 +116,7 @@ class AttachedTopic extends AttachedDeepaMehtaObject implements Topic {
                                                     boolean fetchComposite, boolean fetchRelatingComposite) {
         RelatedAssociationModel assoc = dms.storage.fetchTopicRelatedAssociation(getId(), assocTypeUri, myRoleTypeUri,
             othersRoleTypeUri, othersAssocTypeUri);
-        return assoc != null ? dms.attach(assoc, fetchComposite, fetchRelatingComposite) : null;
+        return assoc != null ? dms.instantiateRelatedAssociation(assoc, fetchComposite, fetchRelatingComposite) : null;
     }
 
     @Override
@@ -125,7 +125,7 @@ class AttachedTopic extends AttachedDeepaMehtaObject implements Topic {
                                                           boolean fetchComposite, boolean fetchRelatingComposite) {
         Set<RelatedAssociationModel> assocs = dms.storage.fetchTopicRelatedAssociations(getId(), assocTypeUri,
             myRoleTypeUri, othersRoleTypeUri, othersAssocTypeUri);
-        return dms.attach(assocs, fetchComposite, fetchRelatingComposite);
+        return dms.instantiateRelatedAssociations(assocs, fetchComposite, fetchRelatingComposite);
     }
 
 
@@ -143,10 +143,10 @@ class AttachedTopic extends AttachedDeepaMehtaObject implements Topic {
     @Override
     public ResultSet<RelatedTopic> getRelatedTopics(List assocTypeUris, String myRoleTypeUri, String othersRoleTypeUri,
                                     String othersTopicTypeUri, boolean fetchComposite, boolean fetchRelatingComposite,
-                                    int maxResultSize, ClientState clientState) {
+                                    int maxResultSize) {
         ResultSet<RelatedTopicModel> topics = dms.storage.fetchTopicRelatedTopics(getId(), assocTypeUris,
             myRoleTypeUri, othersRoleTypeUri, othersTopicTypeUri, maxResultSize);
-        return dms.attach(topics, fetchComposite, fetchRelatingComposite, clientState);
+        return dms.instantiateRelatedTopics(topics, fetchComposite, fetchRelatingComposite);
     }
 
     // --- Association Retrieval ---
@@ -156,12 +156,37 @@ class AttachedTopic extends AttachedDeepaMehtaObject implements Topic {
                                                                                    long othersTopicId) {
         AssociationModel assoc = dms.storage.fetchAssociation(assocTypeUri, getId(), othersTopicId, myRoleTypeUri,
             othersRoleTypeUri);
-        return assoc != null ? dms.attach(assoc, false) : null;                 // fetchComposite=false
+        return assoc != null ? dms.instantiateAssociation(assoc, false) : null;     // fetchComposite=false
     }
 
     @Override
     public Set<Association> getAssociations() {
-        return dms.attach(dms.storage.fetchTopicAssociations(getId()), false);  // fetchComposite=false
+        return dms.instantiateAssociations(dms.storage.fetchTopicAssociations(getId()), false);
+                                                                                    // fetchComposite=false
+    }
+
+
+
+    // === Properties ===
+
+    @Override
+    public Object getProperty(String propUri) {
+        return dms.storage.fetchTopicProperty(getId(), propUri);
+    }
+
+    @Override
+    public void setProperty(String propUri, Object propValue, boolean addToIndex) {
+        dms.storage.storeTopicProperty(getId(), propUri, propValue, addToIndex);
+    }
+
+    @Override
+    public boolean hasProperty(String propUri) {
+        return dms.storage.hasTopicProperty(getId(), propUri);
+    }
+
+    @Override
+    public void removeProperty(String propUri) {
+        dms.storage.removeTopicProperty(getId(), propUri);
     }
 
 
@@ -224,8 +249,8 @@ class AttachedTopic extends AttachedDeepaMehtaObject implements Topic {
     // Note: this method works only for instances, not for types.
     // This is because a type is not of type "dm4.core.topic_type" but of type "dm4.core.meta_type".
     private Association fetchInstantiation() {
-        RelatedTopic topicType = getRelatedTopic("dm4.core.instantiation",
-            "dm4.core.instance", "dm4.core.type", "dm4.core.topic_type", false, false, null);
+        RelatedTopic topicType = getRelatedTopic("dm4.core.instantiation", "dm4.core.instance", "dm4.core.type",
+            "dm4.core.topic_type", false, false);
         //
         if (topicType == null) {
             throw new RuntimeException("Topic " + getId() + " is not associated to a topic type");

@@ -85,7 +85,7 @@ public class FilesPlugin extends PluginActivator implements FilesService, Securi
         } catch (FileRepositoryException e) {
             throw new WebApplicationException(new RuntimeException(operation + " failed", e), e.getStatus());
         } catch (Exception e) {
-            throw new WebApplicationException(new RuntimeException(operation + " failed", e));
+            throw new RuntimeException(operation + " failed", e);
         }
     }
 
@@ -115,7 +115,7 @@ public class FilesPlugin extends PluginActivator implements FilesService, Securi
         } catch (FileRepositoryException e) {
             throw new WebApplicationException(new RuntimeException(operation + " failed", e), e.getStatus());
         } catch (Exception e) {
-            throw new WebApplicationException(new RuntimeException(operation + " failed", e));
+            throw new RuntimeException(operation + " failed", e);
         }
     }
 
@@ -167,7 +167,7 @@ public class FilesPlugin extends PluginActivator implements FilesService, Securi
         } catch (FileRepositoryException e) {
             throw new WebApplicationException(new RuntimeException(operation + " failed", e), e.getStatus());
         } catch (Exception e) {
-            throw new WebApplicationException(new RuntimeException(operation + " failed", e));
+            throw new RuntimeException(operation + " failed", e);
         }
     }
 
@@ -195,7 +195,7 @@ public class FilesPlugin extends PluginActivator implements FilesService, Securi
         } catch (FileRepositoryException e) {
             throw new WebApplicationException(new RuntimeException(operation + " failed", e), e.getStatus());
         } catch (Exception e) {
-            throw new WebApplicationException(new RuntimeException(operation + " failed", e));
+            throw new RuntimeException(operation + " failed", e);
         }
     }
 
@@ -215,7 +215,7 @@ public class FilesPlugin extends PluginActivator implements FilesService, Securi
         } catch (FileRepositoryException e) {
             throw new WebApplicationException(new RuntimeException(operation + " failed", e), e.getStatus());
         } catch (Exception e) {
-            throw new WebApplicationException(new RuntimeException(operation + " failed", e));
+            throw new RuntimeException(operation + " failed", e);
         }
     }
 
@@ -233,7 +233,7 @@ public class FilesPlugin extends PluginActivator implements FilesService, Securi
         } catch (FileRepositoryException e) {
             throw new WebApplicationException(new RuntimeException(operation + " failed", e), e.getStatus());
         } catch (Exception e) {
-            throw new WebApplicationException(new RuntimeException(operation + " failed", e));
+            throw new RuntimeException(operation + " failed", e);
         }
     }
 
@@ -311,7 +311,7 @@ public class FilesPlugin extends PluginActivator implements FilesService, Securi
         } catch (FileRepositoryException e) {
             throw new WebApplicationException(new RuntimeException(operation + " failed", e), e.getStatus());
         } catch (Exception e) {
-            throw new WebApplicationException(new RuntimeException(operation + " failed", e));
+            throw new RuntimeException(operation + " failed", e);
         }
     }
 
@@ -362,20 +362,20 @@ public class FilesPlugin extends PluginActivator implements FilesService, Securi
 
     private Topic fetchFileTopic(File file) {
         String path = repoPath(file);
-        Topic topic = dms.getTopic("dm4.files.path", new SimpleValue(path), false, null);   // fetchComposite=false
+        Topic topic = dms.getTopic("dm4.files.path", new SimpleValue(path), false);   // fetchComposite=false
         if (topic != null) {
             return topic.getRelatedTopic("dm4.core.composition", "dm4.core.child", "dm4.core.parent",
-                "dm4.files.file", true, false, null);
+                "dm4.files.file", true, false);
         }
         return null;
     }
 
     private Topic fetchFolderTopic(File file) {
         String path = repoPath(file);
-        Topic topic = dms.getTopic("dm4.files.path", new SimpleValue(path), false, null);   // fetchComposite=false
+        Topic topic = dms.getTopic("dm4.files.path", new SimpleValue(path), false);   // fetchComposite=false
         if (topic != null) {
             return topic.getRelatedTopic("dm4.core.composition", "dm4.core.child", "dm4.core.parent",
-                "dm4.files.folder", true, false, null);
+                "dm4.files.folder", true, false);
         }
         return null;
     }
@@ -474,7 +474,7 @@ public class FilesPlugin extends PluginActivator implements FilesService, Securi
     }
 
     private String repoPath(long fileTopicId) {
-        Topic fileTopic = dms.getTopic(fileTopicId, true, null);    // fetchComposite=true, clientState=null
+        Topic fileTopic = dms.getTopic(fileTopicId, true);    // fetchComposite=true
         return fileTopic.getCompositeValue().getString("dm4.files.path");
     }
 

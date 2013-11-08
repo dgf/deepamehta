@@ -8,29 +8,14 @@
     margin: 0;
 }
 
-.dm-toolbar   .ui-button-text-icon-primary .ui-button-text,
-#page-content .ui-button-text-icon-primary .ui-button-text {
-    padding-top: 0.2em;
-    padding-bottom: 0.2em;
-}
-
-.dm-toolbar   .ui-button-text-only .ui-button-text,
-#page-content .ui-button-text-only .ui-button-text {
-    padding-top: 0.2em;
-    padding-bottom: 0.2em;
-}
-
 .dm-toolbar   .ui-button-icon-only .ui-button-text,
 #page-content .ui-button-icon-only .ui-button-text {
-    padding-top: 0.8em;
-    padding-bottom: 0.9em;
+    padding-top: 0.9em;
+    padding-bottom: 1.1em;
 }
 
-.dm-toolbar   .ui-button-icon-only,
-#page-content .ui-button-icon-only {
-    vertical-align: middle;
-}
-
+.ui-front,                      /* Used for jQuery UI dialogs.  */
 .ui-resizable-handle {
-    background: #ccc;
+    z-index: 1000 !important;   /* jQuery UI default is 100. OpenLayer's event layer has 999.   */
+                                /* "important" overrides the resizable-handle's style attribute */
 }

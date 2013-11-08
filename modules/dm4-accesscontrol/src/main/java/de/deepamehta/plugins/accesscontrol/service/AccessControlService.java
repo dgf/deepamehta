@@ -1,14 +1,21 @@
 package de.deepamehta.plugins.accesscontrol.service;
 
+import de.deepamehta.plugins.accesscontrol.model.AccessControlList;
 import de.deepamehta.plugins.accesscontrol.model.Permissions;
+import de.deepamehta.core.Association;
 import de.deepamehta.core.DeepaMehtaObject;
 import de.deepamehta.core.Topic;
 import de.deepamehta.core.service.PluginService;
-import de.deepamehta.core.service.accesscontrol.AccessControlList;
+
+import java.util.Collection;
 
 
 
 public interface AccessControlService extends PluginService {
+
+
+
+    // === Session ===
 
     /**
      * Checks weather the credentials in the authorization string match an existing User Account,
@@ -24,72 +31,106 @@ public interface AccessControlService extends PluginService {
     void login();
 
     /**
-     * @return  A <code>true</code> value instructs the webclient to shutdown. That is, its GUI must no longer be
-     *          presented to the user.
-     *          This is used for "private" DM installations. The webclient of a "private" installation is only
-     *          accessible when logged in. A DM installation is made "private" by setting the config property
-     *          <code>dm4.security.read_requires_login</code> to <code>true</code> (in global <code>pom.xml</code>).
+     * Logs the user out. That is invalidating the session associated with the JSESSION ID cookie.
+     *
+     * For a "non-private" DM installation the response is 204 No Content.
+     * For a "private" DM installation the response is 401 Authorization Required. In this case the webclient is
+     * supposed to shutdown the DM GUI then. The webclient of a "private" DM installation must only be visible/usable
+     * when logged in.
      */
-    boolean logout();
+    void logout();
 
-    // ---
+
+
+    // === User ===
 
     /**
      * Returns the username of the logged in user.
      *
-     * @return  The username (a Topic of type "Username" / <code>dm4.accesscontrol.username</code>),
-     *          or <code>null</code> if no user is logged in. ### FIXDOC
+     * @return  The username, or <code>null</code> if no user is logged in.
      */
     String getUsername();
 
     /**
-     * Fetches the "Username" topic for the specified username.
+     * Returns the "Username" topic for the specified username.
      *
-     * @return  The fetched Username (a Topic of type "Username" / <code>dm4.accesscontrol.username</code>),
-     *          or <code>null</code> if no such user exists.
+     * @return  The "Username" topic (type <code>dm4.accesscontrol.username</code>),
+     *          or <code>null</code> if no such username exists.
      */
     Topic getUsername(String username);
 
-    // ---
+
+
+    // === Permissions ===
 
     Permissions getTopicPermissions(long topicId);
 
-    // ---
+    Permissions getAssociationPermissions(long assocId);
+
+
+
+    // === Creator ===
 
     /**
-     * Fetches the creator of an object.
+     * Returns the creator of a topic or an association.
      *
-     * @return  The creator (a Topic of type "Username" / <code>dm4.accesscontrol.username</code>),
-     *          or <code>null</code> if no creator is set. ### FIXDOC
+     * @return  The username of the creator, or <code>null</code> if no creator is set.
      */
-    String getCreator(long objectId);
+    String getCreator(DeepaMehtaObject object);
 
     /**
-     * Assigns the specified user as the creator of the specified object.
+     * Sets the creator of a topic or an association.
      */
-    void setCreator(long objectId, String username);
+    void setCreator(DeepaMehtaObject object, String username);
 
-    // ---
+
+
+    // === Owner ===
 
     /**
-     * Fetches the owner of an object.
+     * Returns the owner of a topic or an association.
      *
-     * @return  The owner (a Topic of type "Username" / <code>dm4.accesscontrol.username</code>),
-     *          or <code>null</code> if no owner is set. ### FIXDOC
+     * @return  The username of the owner, or <code>null</code> if no owner is set.
      */
-    String getOwner(long objectId);
+    String getOwner(DeepaMehtaObject object);
 
     /**
-     * Assigns the specified user as the owner of the specified object.
+     * Sets the owner of a topic or an association.
      */
-    void setOwner(long objectId, String username);
+    void setOwner(DeepaMehtaObject object, String username);
 
-    // ---
 
-    void setACL(long objectId, AccessControlList acl);
 
-    // ---
+    // === Access Control List ===
+
+    /**
+     * Returns the Access Control List of a topic or an association.
+     *
+     * @return  The Access Control List. If no one was set an empty Access Control List is returned.
+     */
+    AccessControlList getACL(DeepaMehtaObject object);
+
+    /**
+     * Sets the Access Control List for a topic or an association.
+     */
+    void setACL(DeepaMehtaObject object, AccessControlList acl);
+
+
+
+    // === Workspaces ===
 
     void joinWorkspace(String username, long workspaceId);
     void joinWorkspace(Topic  username, long workspaceId);
+
+
+
+    // === Retrieval ===
+
+    Collection<Topic> getTopicsByCreator(String username);
+
+    Collection<Topic> getTopicsByOwner(String username);
+
+    Collection<Association> getAssociationsByCreator(String username);
+
+    Collection<Association> getAssociationsByOwner(String username);
 }

@@ -37,13 +37,7 @@ public class UploadedFileProvider implements MessageBodyReader<UploadedFile> {
 
     // -------------------------------------------------------------------------------------------------- Public Methods
 
-
-
-    // ****************************************
     // *** MessageBodyReader Implementation ***
-    // ****************************************
-
-
 
     @Override
     public boolean isReadable(Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType) {
@@ -58,12 +52,9 @@ public class UploadedFileProvider implements MessageBodyReader<UploadedFile> {
         try {
             return parseMultiPart();
         } catch (Exception e) {
-            throw new WebApplicationException(new RuntimeException(
-                "Creating UploadedFile from message body failed", e));
+            throw new RuntimeException("Creating UploadedFile from message body failed", e);
         }
     }
-
-
 
     // ------------------------------------------------------------------------------------------------- Private Methods
 

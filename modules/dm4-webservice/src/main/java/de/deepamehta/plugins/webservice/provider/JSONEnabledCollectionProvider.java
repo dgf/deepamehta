@@ -30,13 +30,7 @@ public class JSONEnabledCollectionProvider implements MessageBodyWriter<Collecti
 
     // -------------------------------------------------------------------------------------------------- Public Methods
 
-
-
-    // ****************************************
     // *** MessageBodyWriter Implementation ***
-    // ****************************************
-
-
 
     @Override
     public boolean isWriteable(Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType) {
@@ -69,8 +63,7 @@ public class JSONEnabledCollectionProvider implements MessageBodyWriter<Collecti
             DeepaMehtaUtils.objectsToJSON(objects).write(writer);
             writer.flush();
         } catch (Exception e) {
-            throw new WebApplicationException(new RuntimeException("Writing message body failed (" +
-                objects.size() + " objects)", e));
+            throw new RuntimeException("Writing message body failed (" + objects.size() + " objects)", e);
         }
     }
 }

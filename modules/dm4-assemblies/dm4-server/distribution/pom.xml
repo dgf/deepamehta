@@ -5,22 +5,22 @@
 
     <groupId>de.deepamehta.assemblies.server</groupId>
     <artifactId>deepamehta-distribution</artifactId>
-    <version>4.1</version>
+    <version>4.1.3-SNAPSHOT</version>
     <name>DeepaMehta 4 Assemblies :: Server :: Distribution</name>
 
     <parent>
         <groupId>de.deepamehta.assemblies</groupId>
         <artifactId>deepamehta-server</artifactId>
-        <version>4.1</version>
+        <version>4.1.3-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
     <properties>
         <karaf.version>2.2.9</karaf.version>
         <karaf.name>deepamehta</karaf.name>
-        <dm4.security.read_requires_login>true</dm4.security.read_requires_login>
+        <dm4.security.read_requires_login>false</dm4.security.read_requires_login>
         <dm4.security.write_requires_login>true</dm4.security.write_requires_login>
-        <dm4.security.subnet_filter>0.0.0.0/0</dm4.security.subnet_filter>
+        <dm4.security.subnet_filter>127.0.0.1/32</dm4.security.subnet_filter>
     </properties>
 
     <dependencies>

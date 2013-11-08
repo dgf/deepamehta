@@ -7,7 +7,7 @@
     <name>DeepaMehta 4 Core</name>
     <groupId>de.deepamehta</groupId>
     <artifactId>deepamehta-core</artifactId>
-    <version>4.1</version>
+    <version>4.1.3-SNAPSHOT</version>
     <packaging>bundle</packaging>
 
     <parent>
@@ -61,7 +61,6 @@
                             de.deepamehta.core.model,
                             de.deepamehta.core.osgi,
                             de.deepamehta.core.service,
-                            de.deepamehta.core.service.accesscontrol,
                             de.deepamehta.core.service.annotation,
                             de.deepamehta.core.service.event,
                             de.deepamehta.core.storage.spi,

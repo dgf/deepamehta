@@ -30,7 +30,6 @@ dm4c.add_plugin("de.deepamehta.workspaces", function() {
 
             function do_select_workspace(menu_item) {
                 var workspace_id = menu_item.value
-                dm4c.log("Workspace selected: " + workspace_id)
                 update_cookie()
                 if (workspace_id == "_new") {
                     workspace_dialog.open()
@@ -106,9 +105,7 @@ dm4c.add_plugin("de.deepamehta.workspaces", function() {
      */
     function get_workspace_id_from_menu() {
         var item = workspace_menu.get_selection()
-        if (item) {
-            return item.value
-        }
+        return item && item.value
     }
 
     // ---
@@ -143,7 +140,7 @@ dm4c.add_plugin("de.deepamehta.workspaces", function() {
         }
         //
         workspace_menu.empty()
-        var icon_src = dm4c.get_icon_src("dm4.workspaces.workspace")
+        var icon_src = dm4c.get_type_icon_src("dm4.workspaces.workspace")
         // add workspaces to menu
         for (var i = 0, workspace; workspace = workspaces[i]; i++) {
             workspace_menu.add_item({label: workspace.value, value: workspace.id, icon: icon_src})

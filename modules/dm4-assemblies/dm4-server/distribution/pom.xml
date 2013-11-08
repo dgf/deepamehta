@@ -16,7 +16,7 @@
     </parent>
 
     <properties>
-        <karaf.version>2.2.9</karaf.version>
+        <karaf.version>2.3.3</karaf.version>
         <karaf.name>deepamehta</karaf.name>
         <dm4.security.read_requires_login>false</dm4.security.read_requires_login>
         <dm4.security.write_requires_login>true</dm4.security.write_requires_login>
@@ -95,8 +95,8 @@
                                 <feature>config</feature>
                                 <feature>ssh</feature>
                                 <feature>eventadmin</feature>
+                                <feature>webconsole</feature>
                                 <feature>dm4-standard</feature>
-                                <feature>dm4-webconsole</feature>
                             </features>
                         </configuration>
                     </execution>
